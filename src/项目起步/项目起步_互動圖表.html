@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目起步 · 互动图表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #f1f5f9; color: #1e293b; line-height: 1.7; padding: 20px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin-bottom: 4px; }
+  .sub { color: #64748b; font-size: .88rem; margin-bottom: 18px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 16px; border: 1px solid #cbd5e1; background: #fff; border-radius: 8px;
+    cursor: pointer; font-size: .88rem; color: #475569; transition: .15s;
+  }
+  .tab-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(15,23,42,.08); margin-bottom: 14px; }
+  .card h2 { font-size: 1rem; margin-bottom: 10px; }
+  .note { font-size: .85rem; color: #475569; background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .row, .two { grid-template-columns: 1fr; } }
+  pre {
+    background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 8px;
+    font-family: ui-monospace, Consolas, monospace; font-size: .77rem; line-height: 1.65;
+    overflow-x: auto; white-space: pre;
+  }
+  pre .ln { display: block; padding: 0 6px; margin: 0 -6px; border-radius: 4px; cursor: pointer; }
+  pre .ln:hover { background: rgba(59,130,246,.18); }
+  pre .ln.hl { background: rgba(59,130,246,.32); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { padding: 6px 14px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: .82rem; color: #475569; }
+  .chip.active { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; font-weight: 600; }
+  .btn { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: .83rem; background: #3b82f6; color: #fff; font-weight: 500; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.gray { background: #64748b; }
+  .btn.green { background: #22c55e; }
+  .btn.amber { background: #f59e0b; }
+  .btn.red { background: #ef4444; }
+  .ctrl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+  .box .title { font-size: .8rem; color: #64748b; margin-bottom: 8px; letter-spacing: .04em; }
+  .box.ok { border-color: #86efac; background: #f0fdf4; }
+  .box.bad { border-color: #fca5a5; background: #fef2f2; }
+  .val { font-family: ui-monospace, Consolas, monospace; font-size: 1.5rem; font-weight: 700; }
+  .val.small { font-size: 1rem; }
+  .muted { color: #94a3b8; font-size: .8rem; }
+  .log { background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, Consolas, monospace; font-size: .75rem; max-height: 170px; overflow-y: auto; line-height: 1.7; }
+  .log .t { color: #7dd3fc; } .log .g { color: #86efac; } .log .y { color: #fde68a; } .log .r { color: #fca5a5; }
+  .bar { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin: 6px 0; }
+  .bar > i { display: block; height: 100%; background: #3b82f6; width: 0; transition: width .35s; }
+  .bar > i.orange { background: #f59e0b; }
+  .toggle { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 9px; margin-bottom: 8px; cursor: pointer; background: #fff; }
+  .toggle:hover { border-color: #93c5fd; }
+  .toggle.on { background: #eff6ff; border-color: #3b82f6; }
+  .toggle .sw { width: 34px; height: 19px; border-radius: 10px; background: #cbd5e1; position: relative; flex: none; transition: .18s; }
+  .toggle .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; background: #fff; border-radius: 50%; transition: .18s; }
+  .toggle.on .sw { background: #3b82f6; }
+  .toggle.on .sw::after { transform: translateX(15px); }
+  .toggle .txt { font-size: .84rem; }
+  .toggle .txt small { display: block; color: #64748b; font-size: .74rem; }
+  .stage-list { display: flex; flex-direction: column; gap: 6px; }
+  .stage { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; }
+  .stage:hover { border-color: #93c5fd; }
+  .stage.active { background: #dbeafe; border-color: #3b82f6; }
+  .stage.done { border-color: #86efac; background: #f0fdf4; }
+  .stage .num { width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: #475569; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; flex: none; }
+  .stage.active .num { background: #3b82f6; color: #fff; }
+  .stage.done .num { background: #22c55e; color: #fff; }
+  .stage .name { font-size: .84rem; font-weight: 600; }
+  .stage .desc { font-size: .76rem; color: #64748b; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 12px; }
+  .flip { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; cursor: pointer; min-height: 108px; display: flex; flex-direction: column; justify-content: center; transition: .18s; }
+  .flip:hover { border-color: #3b82f6; transform: translateY(-2px); }
+  .flip.q { font-family: ui-monospace, Consolas, monospace; font-size: .92rem; color: #1d4ed8; font-weight: 600; }
+  .flip .hint { font-size: .72rem; color: #94a3b8; margin-top: 8px; }
+  .flip .a { font-size: .8rem; color: #334155; display: none; }
+  .flip.open { background: #f0f9ff; border-color: #3b82f6; }
+  .flip.open .q { font-size: .82rem; color: #0f172a; }
+  .flip.open .a { display: block; }
+  .flip.open .hint { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>项目起步 · 互动图表</h1>
+  <p class="sub">配置对照 / 产物体积实验 / 一次请求的完整旅途 / 速查卡</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('cfg', this)">1. 配错 vs 配对</button>
+    <button class="tab-btn" onclick="switchTab('build', this)">2. 体积实验</button>
+    <button class="tab-btn" onclick="switchTab('req', this)">3. 请求的旅途</button>
+    <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+  </div>
+
+  <div class="panel active" id="panel-cfg">
+    <div class="card">
+      <h2>三组最常见的配置错误</h2>
+      <div class="chips" id="cfg-scenes"></div>
+      <div class="row">
+        <div><div class="box bad"><div class="title">症状 / 错误配置</div><pre id="cfg-bad"></pre></div></div>
+        <div><div class="box ok"><div class="title">原因 / 正确配置</div><pre id="cfg-good"></pre></div></div>
+      </div>
+      <div class="note" id="cfg-note"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-build">
+    <div class="card">
+      <h2>勾选配置，看首屏产物怎么变</h2>
+      <p class="muted">数字是教学用的相对估值，用来体现数量级差异，不是真实构建结果。</p>
+      <div id="switches"></div>
+      <div class="two" style="margin-top:14px">
+        <div class="box">
+          <div class="title">首屏 JS</div>
+          <div class="val" id="v-js">0 KB</div>
+          <div class="bar"><i id="bar-js"></i></div>
+          <div class="muted" id="js-note"></div>
+        </div>
+        <div class="box">
+          <div class="title">首屏 CSS</div>
+          <div class="val" id="v-css">0 KB</div>
+          <div class="bar"><i class="orange" id="bar-css"></i></div>
+          <div class="muted" id="css-note"></div>
+        </div>
+      </div>
+      <div class="note" id="build-note"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-req">
+    <div class="card">
+      <h2>一次「结算」请求完整走一遍</h2>
+      <div class="ctrl">
+        <button class="btn" onclick="playReq()">自动播放</button>
+        <button class="btn gray" onclick="stopReq()">停止</button>
+        <button class="btn amber" onclick="setExpired()" id="exp-btn">让 token 过期</button>
+      </div>
+      <div class="two">
+        <div class="stage-list" id="req-stages"></div>
+        <div>
+          <div class="box"><div class="title">当前这一步发生了什么</div><div id="req-desc" style="font-size:.86rem">点左边任意一步。</div></div>
+          <div class="box" style="margin-top:12px">
+            <div class="title">关键状态</div>
+            <div>请求头带 token：<span class="val small" id="v-tok">是</span></div>
+            <div>最终跳转：<span class="val small" id="v-jump">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="log" id="req-log"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-cards">
+    <div class="card">
+      <h2>速查卡（点击翻转）</h2>
+      <div class="cards" id="cards"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(name, btn) {
+  stopReq();
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ---------------- tab1 ---------------- */
+var CFG = [
+  {
+    name: '别名只配一边',
+    bad: [
+      "// jsconfig.json 配了，vite.config.js 没配",
+      "{",
+      '  "compilerOptions": {',
+      '    "paths": { "@/*": ["src/*"] }',
+      "  }",
+      "}",
+      "",
+      "// 运行时报：",
+      // 注意：这里用字符串拼接避免出现尖括号
+      "// Failed to resolve import \"@/apis/home\""
+    ],
+    good: [
+      "// vite.config.js 补上",
+      "export default defineConfig({",
+      "  resolve: {",
+      "    alias: {",
+      "      '@': fileURLToPath(new URL('./src', import.meta.url))",
+      "    },",
+      "  },",
+      "})"
+    ],
+    note: '编辑器读 jsconfig.json，运行时读 vite.config.js。两边都配才对：一边管跳转与补全，一边管真正把模块找来。'
+  },
+  {
+    name: '只装了一个插件',
+    bad: [
+      "Components({",
+      "  resolvers: [ElementPlusResolver()],",
+      "})",
+      "",
+      "// 模板里的 el-button 正常",
+      "// 但 ElMessage 报：",
+      "// ElMessage is not defined"
+    ],
+    good: [
+      "AutoImport({",
+      "  resolvers: [ElementPlusResolver()],",
+      "}),",
+      "Components({",
+      "  resolvers: [ElementPlusResolver()],",
+      "}),",
+      "",
+      "// 一个管模板标签，一个管函数式 API"
+    ],
+    note: 'ElMessage、ElMessageBox、ElLoading 不在模板里，unplugin-vue-components 看不见它们，必须靠 unplugin-auto-import。'
+  },
+  {
+    name: '两个 additionalData',
+    bad: [
+      "scss: {",
+      "  additionalData: '@use \"@/styles/element/index.scss\" as *;',",
+      "},",
+      "",
+      "// 后来又加了一段，写成新对象：",
+      "scss: {",
+      "  additionalData: '@use \"@/styles/var.scss\" as *;',",
+      "}",
+      "",
+      "// 结果：主题色生效，自定义变量找不到"
+    ],
+    good: [
+      "scss: {",
+      "  additionalData: [",
+      "    '@use \"@/styles/element/index.scss\" as *;',",
+      "    '@use \"@/styles/var.scss\" as *;',",
+      "  ].join('\\n'),",
+      "}",
+      "",
+      "// 两行 @use 必须在同一个字符串里"
+    ],
+    note: 'additionalData 是单一配置项，写两份时后者覆盖前者。用数组 join 拼成一段，或者用模板字符串换行连接。'
+  }
+];
+
+var cfgIdx = 0;
+function renderCfg(i) {
+  cfgIdx = i;
+  var s = CFG[i];
+  document.getElementById('cfg-bad').innerHTML = s.bad.map(function (l, k) {
+    return '<span class="ln" data-k="' + k + '">' + esc(l) + '</span>';
+  }).join('');
+  document.getElementById('cfg-good').innerHTML = s.good.map(function (l, k) {
+    return '<span class="ln" data-k="' + k + '">' + esc(l) + '</span>';
+  }).join('');
+  document.getElementById('cfg-note').textContent = s.note;
+  document.querySelectorAll('#cfg-scenes .chip').forEach(function (c, k) {
+    c.classList.toggle('active', k === i);
+  });
+  document.querySelectorAll('#cfg-scenes .chip').forEach(function (c, k) {
+    c.onclick = function () { renderCfg(k); };
+  });
+}
+
+/* ---------------- tab2 ---------------- */
+var SWITCHES = [
+  { key: 'alias', label: '配好路径别名', hint: '可读性提升，体积无变化', js: 0, css: 0 },
+  { key: 'ondemand', label: '组件库按需导入', hint: '全量约 700KB JS + 300KB CSS', js: -420, css: -210 },
+  { key: 'lazy', label: '路由懒加载', hint: '首屏只加载当前页面', js: -260, css: -40 },
+  { key: 'fullcss', label: '引入全量 CSS', hint: '把整包样式都打进去', js: 0, css: 260 }
+];
+var state = { alias: true, ondemand: true, lazy: true, fullcss: false };
+var BASE = { js: 1180, css: 300 };
+
+function calc() {
+  var js = BASE.js, css = BASE.css;
+  SWITCHES.forEach(function (s) {
+    if (state[s.key]) { js += s.js; css += s.css; }
+  });
+  return { js: Math.max(js, 180), css: Math.max(css, 20) };
+}
+
+function renderBuild() {
+  var box = document.getElementById('switches');
+  box.innerHTML = '';
+  SWITCHES.forEach(function (s) {
+    var d = document.createElement('div');
+    d.className = 'toggle' + (state[s.key] ? ' on' : '');
+    d.innerHTML = '<span class="sw"></span><span class="txt">' + esc(s.label) +
+      '<small>' + esc(s.hint) + '</small></span>';
+    d.onclick = function () {
+      state[s.key] = !state[s.key];
+      renderBuild();
+    };
+    box.appendChild(d);
+  });
+  var r = calc();
+  document.getElementById('v-js').textContent = r.js + ' KB';
+  document.getElementById('v-css').textContent = r.css + ' KB';
+  document.getElementById('bar-js').style.width = Math.min(r.js / 12, 100) + '%';
+  document.getElementById('bar-css').style.width = Math.min(r.css / 6, 100) + '%';
+  document.getElementById('js-note').textContent = state.lazy ? '首屏只含当前路由' : '所有页面打成一个文件';
+  document.getElementById('css-note').textContent = state.fullcss ? '全量样式，含未使用组件' : '只有用到组件的样式';
+  var msgs = [];
+  if (!state.ondemand) msgs.push('组件库全量引入，JS 与 CSS 都明显变大。');
+  if (!state.lazy) msgs.push('未做懒加载，首屏要等所有页面下载完。');
+  if (state.fullcss) msgs.push('即使按需导入组件，引入全量 CSS 也会把样式体积拉回来。');
+  if (!msgs.length) msgs.push('当前是最优组合：按需组件 + 路由懒加载 + 不引入全量样式。');
+  document.getElementById('build-note').textContent = msgs.join(' ');
+}
+
+/* ---------------- tab3 ---------------- */
+var REQ = [
+  { n: '组件发起请求', d: '购物车页调用 checkout()，此时还不知道 token 是否有效。' },
+  { n: '请求拦截器', d: '从 user store 取 token，塞进 Authorization 头。注意 useUserStore() 写在回调内部。' },
+  { n: '到达服务端', d: '服务器校验 token。有效就返回数据，过期就返回 401。' },
+  { n: '响应拦截器（成功）', d: 'HTTP 200 但业务码可能是 1 或 0，必须看响应体里的 code，不能只看状态码。' },
+  { n: '响应拦截器（401）', d: '清空 store、提示一次、带着 redirect 跳登录页。页面里不写任何 401 判断。' },
+  { n: '回到组件', d: '成功则拿数据继续渲染；失败则进入 catch 做局部降级。' }
+];
+var reqIdx = -1, reqTimer = null, expired = false;
+
+function renderReq() {
+  var box = document.getElementById('req-stages');
+  box.innerHTML = '';
+  REQ.forEach(function (s, i) {
+    var d = document.createElement('div');
+    var skipped = expired === false && i === 4;
+    d.className = 'stage' + (i === reqIdx ? ' active' : '') + (i < reqIdx ? ' done' : '');
+    if (skipped) d.style.opacity = '.45';
+    d.innerHTML = '<span class="num">' + (i + 1) + '</span><span><span class="name">' + esc(s.n) +
+      '</span><br><span class="desc">' + esc(s.d) + '</span></span>';
+    d.onclick = function () { selectReq(i); };
+    box.appendChild(d);
+  });
+  document.getElementById('v-tok').textContent = expired ? '是（但已过期）' : '是';
+  document.getElementById('v-jump').textContent = reqIdx >= 4 ? '/login?redirect=/cart' : '—';
+  document.getElementById('exp-btn').className = 'btn ' + (expired ? 'red' : 'amber');
+  document.getElementById('exp-btn').textContent = expired ? '当前：token 已过期' : '让 token 过期';
+}
+
+function selectReq(i) {
+  reqIdx = i;
+  var d = REQ[i].d;
+  if (!expired && i === 4) d = 'token 有效，不会走到这一步。这一步只在 401 时发生。';
+  if (expired && i === 3) d = 'token 过期，响应拦截器不会按成功处理，而是转入 401 分支。';
+  document.getElementById('req-desc').textContent = d;
+  renderReq();
+}
+
+function reqLog(msg, cls) {
+  var box = document.getElementById('req-log');
+  var line = document.createElement('div');
+  line.innerHTML = '<span class="' + (cls || '') + '">' + esc(msg) + '</span>';
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function playReq() {
+  stopReq();
+  reqIdx = -1;
+  var i = 0;
+  var path = expired ? [0, 1, 2, 4, 5] : [0, 1, 2, 3, 5];
+  reqTimer = setInterval(function () {
+    if (i >= path.length) { stopReq(); return; }
+    selectReq(path[i]);
+    reqLog('第 ' + (path[i] + 1) + ' 步：' + REQ[path[i]].n, expired && path[i] === 4 ? 'r' : 'g');
+    i++;
+  }, 700);
+}
+
+function stopReq() {
+  if (reqTimer) { clearInterval(reqTimer); reqTimer = null; }
+}
+
+function setExpired() {
+  expired = !expired;
+  stopReq();
+  reqIdx = -1;
+  renderReq();
+  reqLog(expired ? 'token 已过期：后续请求都会走 401 分支' : 'token 有效：走正常成功分支', expired ? 'r' : 'g');
+}
+
+/* ---------------- tab4 ---------------- */
+var CARDS = [
+  { q: 'resolve.alias', a: 'Vite 解析别名的地方。缺它 → 运行时报 Failed to resolve import。' },
+  { q: 'jsconfig.json paths', a: '编辑器语言服务读的映射。缺它 → 代码能跑但跳转失效、画红线。' },
+  { q: 'unplugin-auto-import', a: '自动注入 ElMessage 这类函数式 API 的 import。' },
+  { q: 'unplugin-vue-components', a: '自动注入模板标签对应的组件与样式。' },
+  { q: 'additionalData', a: '编译前给每个 SCSS 文件注入一段代码。多段要拼成一个字符串。' },
+  { q: 'interceptors.request', a: '统一加 token。store 必须在回调内部取。' },
+  { q: 'interceptors.response', a: '统一判业务码、统一处理 401、统一返回 res.data。' },
+  { q: '() => import()', a: '路由懒加载，按需下载页面，首屏更小。' }
+];
+
+function renderCards() {
+  var box = document.getElementById('cards');
+  box.innerHTML = '';
+  CARDS.forEach(function (c) {
+    var d = document.createElement('div');
+    d.className = 'flip';
+    d.innerHTML = '<div class="q">' + esc(c.q) + '</div><div class="a">' + esc(c.a) +
+      '</div><div class="hint">点击查看说明</div>';
+    d.onclick = function () { d.classList.toggle('open'); };
+    box.appendChild(d);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  renderCfg(0);
+  renderBuild();
+  renderReq();
+  renderCards();
+});
+</script>
+</body>
+</html>

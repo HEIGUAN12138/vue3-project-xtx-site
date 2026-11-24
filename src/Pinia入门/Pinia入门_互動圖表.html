@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinia 入门 · 互动图表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #f1f5f9; color: #1e293b; line-height: 1.7; padding: 20px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin-bottom: 4px; }
+  .sub { color: #64748b; font-size: .88rem; margin-bottom: 18px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 16px; border: 1px solid #cbd5e1; background: #fff; border-radius: 8px;
+    cursor: pointer; font-size: .88rem; color: #475569; transition: .15s;
+  }
+  .tab-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(15,23,42,.08); margin-bottom: 14px; }
+  .card h2 { font-size: 1rem; margin-bottom: 10px; color: #0f172a; }
+  .note { font-size: .85rem; color: #475569; background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
+  pre {
+    background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 8px;
+    font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: .78rem;
+    line-height: 1.65; overflow-x: auto; white-space: pre;
+  }
+  pre .ln { display: block; padding: 0 6px; margin: 0 -6px; border-radius: 4px; cursor: pointer; }
+  pre .ln:hover { background: rgba(59,130,246,.18); }
+  pre .ln.hl { background: rgba(59,130,246,.32); }
+  pre .cm { color: #64748b; }
+  pre .kw { color: #f472b6; }
+  pre .st { color: #86efac; }
+  pre .fn { color: #7dd3fc; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip {
+    padding: 6px 14px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff;
+    cursor: pointer; font-size: .82rem; color: #475569;
+  }
+  .chip.active { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; font-weight: 600; }
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: .83rem; background: #3b82f6; color: #fff; font-weight: 500;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.gray { background: #64748b; }
+  .btn.green { background: #22c55e; }
+  .btn.amber { background: #f59e0b; }
+  .btn.red { background: #ef4444; }
+  .ctrl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+  .box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+  .box .title { font-size: .8rem; color: #64748b; margin-bottom: 8px; letter-spacing: .04em; }
+  .box.ok { border-color: #86efac; background: #f0fdf4; }
+  .box.bad { border-color: #fca5a5; background: #fef2f2; }
+  .val { font-family: ui-monospace, Consolas, monospace; font-size: 1.5rem; font-weight: 700; color: #0f172a; }
+  .val.small { font-size: 1rem; }
+  .muted { color: #94a3b8; font-size: .8rem; }
+  .log {
+    background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 10px 12px;
+    font-family: ui-monospace, Consolas, monospace; font-size: .75rem;
+    max-height: 180px; overflow-y: auto; line-height: 1.7;
+  }
+  .log .t { color: #7dd3fc; }
+  .log .g { color: #86efac; }
+  .log .y { color: #fde68a; }
+  .log .r { color: #fca5a5; }
+  .stage-list { display: flex; flex-direction: column; gap: 6px; }
+  .stage {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid #e2e8f0; background: #fff; cursor: pointer; transition: .15s;
+  }
+  .stage:hover { border-color: #93c5fd; }
+  .stage.active { background: #dbeafe; border-color: #3b82f6; }
+  .stage.done { border-color: #86efac; background: #f0fdf4; }
+  .stage .num {
+    width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: #475569;
+    display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; flex: none;
+  }
+  .stage.active .num { background: #3b82f6; color: #fff; }
+  .stage.done .num { background: #22c55e; color: #fff; }
+  .stage .name { font-size: .84rem; font-weight: 600; }
+  .stage .desc { font-size: .76rem; color: #64748b; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 12px; }
+  .flip {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;
+    cursor: pointer; min-height: 108px; transition: .18s; display: flex; flex-direction: column; justify-content: center;
+  }
+  .flip:hover { border-color: #3b82f6; transform: translateY(-2px); }
+  .flip.q { font-family: ui-monospace, Consolas, monospace; font-size: .95rem; color: #1d4ed8; font-weight: 600; }
+  .flip .hint { font-size: .72rem; color: #94a3b8; margin-top: 8px; }
+  .flip .a { font-size: .8rem; color: #334155; display: none; }
+  .flip.open { background: #f0f9ff; border-color: #3b82f6; }
+  .flip.open .q { font-size: .82rem; color: #0f172a; }
+  .flip.open .a { display: block; }
+  .flip.open .hint { display: none; }
+  .bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .bar > i { display: block; height: 100%; background: #3b82f6; width: 0; transition: width .3s; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pinia 入门 · 互动图表</h1>
+  <p class="sub">四个可操作模型：代码对照 / 响应式实验室 / 一次 action 的生命周期 / 速查卡</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('code', this)">1. 选项式 vs 组合式</button>
+    <button class="tab-btn" onclick="switchTab('react', this)">2. 响应式实验室</button>
+    <button class="tab-btn" onclick="switchTab('life', this)">3. action 生命周期</button>
+    <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+  </div>
+
+  <!-- ========== tab1 ========== -->
+  <div class="panel active" id="panel-code">
+    <div class="card">
+      <h2>同一个 store，两种写法</h2>
+      <p class="muted">点任意一行代码，看它在另一侧的对应关系。</p>
+      <div class="chips" id="scenes"></div>
+      <div class="row">
+        <div>
+          <div class="box"><div class="title">选项式（Options Store）</div><pre id="code-a"></pre></div>
+        </div>
+        <div>
+          <div class="box"><div class="title">组合式（Setup Store）</div><pre id="code-b"></pre></div>
+        </div>
+      </div>
+      <div class="note" id="code-note"></div>
+    </div>
+  </div>
+
+  <!-- ========== tab2 ========== -->
+  <div class="panel" id="panel-react">
+    <div class="card">
+      <h2>响应式实验室：为什么不能解构</h2>
+      <p class="muted">左边是「用 storeToRefs」，右边是「直接解构」。改 state 后看两边是否跟着变。</p>
+      <div class="ctrl">
+        <button class="btn" onclick="labAdd()">直接改 state：count + 1</button>
+        <button class="btn green" onclick="labPatch()">$patch 一次改两样</button>
+        <button class="btn amber" onclick="labPush()">往 list 里加一条</button>
+        <button class="btn red" onclick="labReset()">$reset / 手动重置</button>
+        <button class="btn gray" onclick="labRemount()">重新挂载组件（重新解构）</button>
+      </div>
+      <div class="two">
+        <div class="box ok" id="box-refs">
+          <div class="title">storeToRefs：实时专线</div>
+          <div>count = <span class="val" id="v-refs-count">0</span></div>
+          <div>list 长度 = <span class="val small" id="v-refs-list">0</span></div>
+        </div>
+        <div class="box bad" id="box-raw">
+          <div class="title">直接解构：拍下的照片</div>
+          <div>count = <span class="val" id="v-raw-count">0</span></div>
+          <div>list 长度 = <span class="val small" id="v-raw-list">0</span></div>
+        </div>
+      </div>
+      <div class="note" id="lab-note">试试点「直接改 state」，观察右边那一栏：它停在上一次「重新挂载」时的值。</div>
+      <div class="log" id="lab-log"></div>
+    </div>
+  </div>
+
+  <!-- ========== tab3 ========== -->
+  <div class="panel" id="panel-life">
+    <div class="card">
+      <h2>一次 fetchList 的生命周期</h2>
+      <p class="muted">点阶段看说明，或按「自动播放」。注意第 3 步的分支：命中缓存时后三步全部跳过。</p>
+      <div class="ctrl">
+        <button class="btn" onclick="playStages()">自动播放</button>
+        <button class="btn gray" onclick="stopStages()">停止</button>
+        <button class="btn green" onclick="toggleCache()" id="cache-btn">当前：缓存未命中</button>
+      </div>
+      <div class="two">
+        <div class="stage-list" id="stages"></div>
+        <div>
+          <div class="box"><div class="title">当前阶段说明</div><div id="stage-desc" style="font-size:.86rem">点左边任意一步。</div></div>
+          <div class="box" style="margin-top:12px">
+            <div class="title">store 里的数据</div>
+            <div>list.length = <span class="val small" id="v-life-list">0</span></div>
+            <div>loading = <span class="val small" id="v-life-loading">false</span></div>
+            <div class="bar"><i id="life-bar"></i></div>
+            <div class="muted" id="life-progress" style="margin-top:6px">0 / 0</div>
+          </div>
+        </div>
+      </div>
+      <div class="log" id="life-log"></div>
+    </div>
+  </div>
+
+  <!-- ========== tab4 ========== -->
+  <div class="panel" id="panel-cards">
+    <div class="card">
+      <h2>速查卡（点击翻转）</h2>
+      <div class="cards" id="cards"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- 通用 ---------------- */
+function switchTab(name, btn) {
+  stopStages();
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+/* ---------------- tab1：代码对照 ---------------- */
+var SCENES = [
+  {
+    name: '计数器',
+    a: [
+      { t: "state: () => ({ count: 0 })", n: "选项式的 state 必须是函数，每次创建返回新对象。" },
+      { t: "getters: {", n: "getters 相当于组合式里的 computed，结果带缓存。" },
+      { t: "  double: (s) => s.count * 2", n: "派生值不单独存储，用到时才算。" },
+      { t: "},", n: "" },
+      { t: "actions: {", n: "actions 是唯一写业务逻辑的地方，可以同步也可以异步。" },
+      { t: "  inc() { this.count++ }", n: "Pinia 允许直接改 state，不再需要 mutations。" }
+    ],
+    b: [
+      { t: "const count = ref(0)", n: "组合式里 state 就是一个 ref。" },
+      { t: "const double = computed(() => count.value * 2)", n: "computed 与 getters 等价，同样带缓存。" },
+      { t: "function inc() { count.value++ }", n: "普通函数就是 action，不需要包装。" },
+      { t: "return { count, double, inc }", n: "必须显式 return，否则外部拿不到。" }
+    ]
+  },
+  {
+    name: '用户 token',
+    a: [
+      { t: "state: () => ({ token: '', info: null })", n: "登录状态放在 store，跨页面存活。" },
+      { t: "getters: { isLogin: (s) => !!s.token }", n: "用派生值判断登录，不要在 state 里再存一个 boolean。" },
+      { t: "actions: {", n: "" },
+      { t: "  setToken(t) { this.token = t },", n: "登录成功后写入。" },
+      { t: "  $reset 天然可用", n: "选项式 store 自带 $reset，退出登录时一键清空。" },
+    ],
+    b: [
+      { t: "const token = ref('')", n: "同样是一份 ref。" },
+      { t: "const info = ref(null)", n: "用户信息单独一个 ref，便于分别监听。" },
+      { t: "const isLogin = computed(() => !!token.value)", n: "派生值。" },
+      { t: "function reset() { token.value = ''; info.value = null }", n: "组合式没有 $reset，必须自己写，并记得 return。" }
+    ]
+  },
+  {
+    name: '购物车汇总',
+    a: [
+      { t: "getters: {", n: "金额汇总放 getters，全站只有一个算法。" },
+      { t: "  checked: (s) => s.list.filter(i => i.selected),", n: "先筛出勾选项。" },
+      { t: "  total() {", n: "" },
+      { t: "    return this.checked.reduce((sum, i) => sum + i.price * i.count, 0)", n: "每个页面读同一个 total，不会出现差价。" },
+      { t: "  }", n: "" },
+      { t: "}", n: "" }
+    ],
+    b: [
+      { t: "const checked = computed(() => list.value.filter(i => i.selected))", n: "同样的筛选逻辑。" },
+      { t: "const total = computed(() =>", n: "" },
+      { t: "  checked.value.reduce((s, i) => s + i.price * i.count, 0))", n: "组合式里用 .value，且不能漏掉 return 出去。" },
+      { t: "return { list, checked, total }", n: "" }
+    ]
+  }
+];
+
+var curScene = 0;
+function renderScene(i) {
+  curScene = i;
+  var s = SCENES[i];
+  var a = document.getElementById('code-a');
+  var b = document.getElementById('code-b');
+  a.innerHTML = s.a.map(function (l, k) {
+    return '<span class="ln" data-i="' + k + '" onclick="pickLine(' + k + ')">' + esc(l.t) + '</span>';
+  }).join('');
+  b.innerHTML = s.b.map(function (l, k) {
+    return '<span class="ln" data-i="' + k + '" onclick="pickLine(-1,' + k + ')">' + esc(l.t) + '</span>';
+  }).join('');
+  document.getElementById('code-note').textContent = '点任一行，看它的解释。';
+  document.querySelectorAll('#scenes .chip').forEach(function (c, k) {
+    c.classList.toggle('active', k === i);
+  });
+  document.querySelectorAll('#scenes .chip').forEach(function (c, k) {
+    c.onclick = function () { renderScene(k); };
+  });
+}
+
+function pickLine(sideA, sideB) {
+  var s = SCENES[curScene];
+  var item = sideA >= 0 ? s.a[sideA] : s.b[sideB];
+  document.querySelectorAll('#code-a .ln, #code-b .ln').forEach(function (el) { el.classList.remove('hl'); });
+  var target = sideA >= 0
+    ? document.querySelectorAll('#code-a .ln')[sideA]
+    : document.querySelectorAll('#code-b .ln')[sideB];
+  if (target) target.classList.add('hl');
+  document.getElementById('code-note').textContent = item.n || '这一行只是结构上的过渡，没有额外语义。';
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ---------------- tab2：响应式实验室 ---------------- */
+// 模拟真实 store：一份响应式数据源
+var STORE = { count: 0, list: [] };
+// 「storeToRefs」：每次读取都从 STORE 现取，等价于实时专线
+// 「直接解构」：相当于 snapshot，只在挂载那一刻取一次
+var snapshot = { count: 0, list: 0 };
+
+function labRender() {
+  document.getElementById('v-refs-count').textContent = STORE.count;
+  document.getElementById('v-refs-list').textContent = STORE.list.length;
+  document.getElementById('v-raw-count').textContent = snapshot.count;
+  document.getElementById('v-raw-list').textContent = snapshot.list;
+}
+
+function labLog(msg, cls) {
+  var box = document.getElementById('lab-log');
+  var t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  var line = document.createElement('div');
+  line.innerHTML = '<span class="t">' + t + '</span> <span class="' + (cls || '') + '">' + esc(msg) + '</span>';
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function labAdd() {
+  STORE.count++;
+  labLog('store.count++ → ' + STORE.count + '（storeToRefs 立刻看到新值，解构那栏不动）', 'g');
+  document.getElementById('lab-note').textContent =
+    '这就是解构丢响应性的本质：右边拿到的是挂载时的数值副本，不是引用。';
+  labRender();
+}
+
+function labPatch() {
+  STORE.count += 5;
+  STORE.list.push('item-' + (STORE.list.length + 1));
+  labLog('$patch({ count: +5, list: push }) → 一次触发，中间状态不会被视图看到', 'g');
+  document.getElementById('lab-note').textContent =
+    '$patch 的价值是「一次性提交」，避免页面看到改了一半的数据。';
+  labRender();
+}
+
+function labPush() {
+  STORE.list.push('sku-' + (STORE.list.length + 1));
+  labLog('list.push() → 长度 ' + STORE.list.length + '（数组原地修改，同样被追踪）', 'g');
+  labRender();
+}
+
+function labReset() {
+  STORE.count = 0;
+  STORE.list.length = 0;
+  snapshot.count = 0;
+  snapshot.list = 0;
+  labLog('reset() → 组合式 store 需要自己写这个函数；选项式可用 $reset()', 'y');
+  document.getElementById('lab-note').textContent =
+    '注意：$reset 只清内存。如果接了持久化插件，本地存储里仍是旧值，要单独清。';
+  labRender();
+}
+
+function labRemount() {
+  snapshot.count = STORE.count;
+  snapshot.list = STORE.list.length;
+  labLog('组件重新挂载 → 重新执行 const { count } = store，此时才同步一次', 'y');
+  document.getElementById('lab-note').textContent =
+    '所以「刷新页面就正常」这个现象，反过来证明了它是解构快照问题，而不是数据没变。';
+  labRender();
+}
+
+/* ---------------- tab3：action 生命周期 ---------------- */
+var STAGES = [
+  { n: '组件挂载', d: 'onMounted 里调用 store.fetchList()，此时请求才被发起。' },
+  { n: '进入 action', d: 'fetchList 开始执行，先读 loading 防止重复进入。' },
+  { n: '检查缓存', d: 'if (list.length) return —— 命中就直接返回，后面四步全部跳过。' },
+  { n: '发出请求', d: '设置 loading = true，界面显示骨架屏；此刻 store 里还没有新数据。' },
+  { n: '写入 state', d: '请求返回后赋值 list，这一步是唯一真正改变数据的地方。' },
+  { n: 'getters 重算', d: '依赖 list 的派生值（如 topLevel）标记为脏，下次读取时重新计算。' },
+  { n: '视图更新', d: '所有读这份数据的组件一起刷新，包括导航与角标。' },
+  { n: '收尾', d: 'finally 里把 loading 复位；即使请求失败也会执行。' }
+];
+var stageIdx = -1;
+var lifeTimer = null;
+var cacheHit = false;
+
+function stageAllowed(i) {
+  // 命中缓存时，第 4 步之后全部跳过
+  return !(cacheHit && i >= 3);
+}
+
+function renderStages() {
+  var box = document.getElementById('stages');
+  box.innerHTML = '';
+  STAGES.forEach(function (s, i) {
+    var div = document.createElement('div');
+    div.className = 'stage' + (i === stageIdx ? ' active' : '') + (i < stageIdx ? ' done' : '');
+    if (!stageAllowed(i)) div.style.opacity = '.4';
+    div.innerHTML = '<span class="num">' + (i + 1) + '</span><span><span class="name">' + s.n +
+      '</span><br><span class="desc">' + s.d + '</span></span>';
+    div.onclick = function () { selectStage(i); };
+    box.appendChild(div);
+  });
+  var total = cacheHit ? 3 : STAGES.length;
+  var done = Math.min(stageIdx + 1, total);
+  document.getElementById('v-life-list').textContent = STORE.list.length;
+  document.getElementById('v-life-loading').textContent =
+    (stageIdx === 3 && !cacheHit) ? 'true' : 'false';
+  document.getElementById('life-bar').style.width = (total ? (done / total * 100) : 0) + '%';
+  document.getElementById('life-progress').textContent = done + ' / ' + total;
+}
+
+function selectStage(i) {
+  stageIdx = i;
+  if (!stageAllowed(i)) {
+    document.getElementById('stage-desc').textContent =
+      '这一步在「缓存命中」的分支里会被跳过，因为第 3 步已经 return 了。';
+  } else {
+    document.getElementById('stage-desc').textContent = STAGES[i].d;
+  }
+  if (i === 4 && stageAllowed(i) && STORE.list.length === 0) {
+    STORE.list = ['分类 A', '分类 B', '分类 C'];
+  }
+  renderStages();
+}
+
+function lifeLog(msg, cls) {
+  var box = document.getElementById('life-log');
+  var line = document.createElement('div');
+  line.innerHTML = '<span class="' + (cls || '') + '">' + esc(msg) + '</span>';
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function playStages() {
+  stopStages();
+  stageIdx = -1;
+  if (cacheHit && STORE.list.length === 0) STORE.list = ['分类 A', '分类 B', '分类 C'];
+  var limit = cacheHit ? 3 : STAGES.length;
+  var i = 0;
+  lifeTimer = setInterval(function () {
+    if (i >= limit) { stopStages(); return; }
+    selectStage(i);
+    lifeLog('第 ' + (i + 1) + ' 步：' + STAGES[i].n, i === 2 && cacheHit ? 'y' : 'g');
+    i++;
+  }, 700);
+}
+
+function stopStages() {
+  if (lifeTimer) { clearInterval(lifeTimer); lifeTimer = null; }
+}
+
+function toggleCache() {
+  cacheHit = !cacheHit;
+  document.getElementById('cache-btn').textContent = '当前：' + (cacheHit ? '缓存命中' : '缓存未命中');
+  document.getElementById('cache-btn').className = 'btn ' + (cacheHit ? 'amber' : 'green');
+  stopStages();
+  stageIdx = -1;
+  renderStages();
+  lifeLog(cacheHit ? '切到缓存命中：第 3 步会直接 return，只有 3 步' : '切到缓存未命中：完整走 8 步', 'y');
+}
+
+/* ---------------- tab4：速查卡 ---------------- */
+var CARDS = [
+  { q: 'defineStore(id, opts)', a: '登记一个 store。id 全局唯一，重复会导致状态串用。只是登记，不创建实例。' },
+  { q: 'state: () => ({})', a: '必须是函数。写成对象会让多次创建共享同一份数据。' },
+  { q: 'getters', a: '等价于 computed：有缓存、无副作用。返回函数形式的 getter 会失去缓存。' },
+  { q: 'actions', a: '普通函数，可同步可异步，可直接改 this.xxx，也可调用其他 store。' },
+  { q: 'storeToRefs(store)', a: '给 state 与 getters 装实时专线。actions 不需要它，直接解构。' },
+  { q: '$patch(obj | fn)', a: '一次提交多个字段。对象形式浅合并；函数形式可写复杂逻辑。' },
+  { q: '$reset()', a: '只对选项式 store 有效。组合式要自己写 reset 函数，并注意持久化插件。' },
+  { q: 'createPinia()', a: '创建响应式容器并统一管理副作用，必须在 app.mount 之前 app.use。' }
+];
+
+function renderCards() {
+  var box = document.getElementById('cards');
+  box.innerHTML = '';
+  CARDS.forEach(function (c, i) {
+    var d = document.createElement('div');
+    d.className = 'flip';
+    d.innerHTML = '<div class="q">' + esc(c.q) + '</div><div class="a">' + esc(c.a) + '</div>' +
+      '<div class="hint">点击查看说明</div>';
+    d.onclick = function () { d.classList.toggle('open'); };
+    box.appendChild(d);
+  });
+}
+
+/* ---------------- 初始化 ---------------- */
+document.addEventListener('DOMContentLoaded', function () {
+  renderScene(0);
+  labRender();
+  labLog('已挂载：snapshot 记下 count = 0', 'y');
+  renderStages();
+  renderCards();
+});
+</script>
+</body>
+</html>

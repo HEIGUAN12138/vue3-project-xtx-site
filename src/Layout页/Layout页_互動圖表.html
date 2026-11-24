@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layout 页 · 互动图表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #f1f5f9; color: #1e293b; line-height: 1.7; padding: 20px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin-bottom: 4px; }
+  .sub { color: #64748b; font-size: .88rem; margin-bottom: 18px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tab-btn { padding: 8px 16px; border: 1px solid #cbd5e1; background: #fff; border-radius: 8px; cursor: pointer; font-size: .88rem; color: #475569; transition: .15s; }
+  .tab-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(15,23,42,.08); margin-bottom: 14px; }
+  .card h2 { font-size: 1rem; margin-bottom: 10px; }
+  .note { font-size: .85rem; color: #475569; background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+  .btn { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: .83rem; background: #3b82f6; color: #fff; font-weight: 500; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.gray { background: #64748b; } .btn.green { background: #22c55e; }
+  .btn.amber { background: #f59e0b; } .btn.red { background: #ef4444; }
+  .ctrl { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+  .box .title { font-size: .8rem; color: #64748b; margin-bottom: 8px; letter-spacing: .04em; }
+  .box.ok { border-color: #86efac; background: #f0fdf4; }
+  .box.bad { border-color: #fca5a5; background: #fef2f2; }
+  .val { font-family: ui-monospace, Consolas, monospace; font-size: 1.5rem; font-weight: 700; }
+  .muted { color: #94a3b8; font-size: .8rem; }
+  .log { background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, Consolas, monospace; font-size: .75rem; max-height: 170px; overflow-y: auto; line-height: 1.7; }
+  .log .t { color: #7dd3fc; } .log .g { color: #86efac; } .log .y { color: #fde68a; } .log .r { color: #fca5a5; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 12px; }
+  .flip { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; cursor: pointer; min-height: 108px; display: flex; flex-direction: column; justify-content: center; transition: .18s; }
+  .flip:hover { border-color: #3b82f6; transform: translateY(-2px); }
+  .flip.q { font-family: ui-monospace, Consolas, monospace; font-size: .92rem; color: #1d4ed8; font-weight: 600; }
+  .flip .hint { font-size: .72rem; color: #94a3b8; margin-top: 8px; }
+  .flip .a { font-size: .8rem; color: #334155; display: none; }
+  .flip.open { background: #f0f9ff; border-color: #3b82f6; }
+  .flip.open .q { font-size: .82rem; color: #0f172a; }
+  .flip.open .a { display: block; }
+  .flip.open .hint { display: none; }
+
+  /* 路由模拟 */
+  .routes { display: flex; flex-direction: column; gap: 6px; }
+  .route-item { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; background: #fff; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
+  .route-item:hover { border-color: #93c5fd; }
+  .route-item.active { background: #dbeafe; border-color: #3b82f6; font-weight: 600; }
+  .route-item small { color: #64748b; font-family: inherit; }
+  .screen { border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; }
+  .scr-nav { background: #1e3a5f; color: #fff; padding: 6px 10px; font-size: .74rem; display: flex; gap: 10px; }
+  .scr-head { background: #2c5282; color: #cbd5e1; padding: 5px 10px; font-size: .7rem; }
+  .scr-body { padding: 22px 12px; text-align: center; font-size: .84rem; color: #334155; min-height: 70px; display: flex; align-items: center; justify-content: center; }
+  .scr-foot { background: #e2e8f0; color: #64748b; padding: 5px 10px; font-size: .7rem; text-align: center; }
+  .hide { display: none !important; }
+
+  /* 吸顶 */
+  .scroll-demo { border: 2px solid #cbd5e1; border-radius: 10px; height: 220px; overflow: hidden; position: relative; background: #fff; }
+  .sd-head { background: #2c5282; color: #fff; padding: 8px 10px; font-size: .74rem; }
+  .sd-sticky { background: #1e3a5f; color: #fff; padding: 6px 10px; font-size: .72rem; transition: transform .25s, opacity .25s; }
+  .sd-sticky.off { transform: translateY(-100%); opacity: 0; }
+  .sd-body { padding: 10px; font-size: .76rem; color: #64748b; }
+  .sd-line { height: 16px; background: #f1f5f9; border-radius: 4px; margin-bottom: 6px; }
+  input[type=range] { width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Layout 页 · 互动图表</h1>
+  <p class="sub">路由结构模拟 / 吸顶阈值实验 / 请求去重对比 / 速查卡</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('route', this)">1. 谁是外壳</button>
+    <button class="tab-btn" onclick="switchTab('sticky', this)">2. 吸顶实验</button>
+    <button class="tab-btn" onclick="switchTab('dedupe', this)">3. 请求去重</button>
+    <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+  </div>
+
+  <!-- tab1 -->
+  <div class="panel active" id="panel-route">
+    <div class="card">
+      <h2>点不同地址，看外壳与内容怎么组合</h2>
+      <div class="two">
+        <div>
+          <div class="box"><div class="title">路由表</div><div class="routes" id="routes"></div></div>
+        </div>
+        <div>
+          <div class="box" style="padding:0;border:none">
+            <div class="title" style="padding:0 0 8px">页面实际渲染</div>
+            <div class="screen" id="screen">
+              <div class="scr-nav" id="scr-nav">
+                <span>首页</span><span>分类</span><span>购物车</span><span>我的</span>
+              </div>
+              <div class="scr-head" id="scr-head">搜索 · 全部分类 · 手机 / 电脑 / 家电</div>
+              <div class="scr-body" id="scr-body">首页内容</div>
+              <div class="scr-foot" id="scr-foot">关于我们 · 帮助中心 · 联系客服</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="note" id="route-note">点左侧任意地址。</div>
+    </div>
+  </div>
+
+  <!-- tab2 -->
+  <div class="panel" id="panel-sticky">
+    <div class="card">
+      <h2>拖动滚动位置，看吸顶条何时出现</h2>
+      <div class="ctrl">
+        <span class="muted">滚动位置</span>
+        <input type="range" id="scroll" min="0" max="300" value="0" oninput="onScroll(this.value)">
+        <span class="muted" id="scroll-val">0 px</span>
+      </div>
+      <div class="two">
+        <div class="scroll-demo">
+          <div class="sd-head">头部（高 78px）</div>
+          <div class="sd-sticky off" id="sd-sticky">吸顶导航（sticky）</div>
+          <div class="sd-body">
+            <div class="sd-line"></div><div class="sd-line"></div><div class="sd-line"></div>
+            <div class="sd-line"></div><div class="sd-line"></div><div class="sd-line"></div>
+            <div class="sd-line"></div><div class="sd-line"></div>
+          </div>
+        </div>
+        <div>
+          <div class="box" id="sticky-box">
+            <div class="title">判断条件</div>
+            <div style="font-family:ui-monospace,Consolas,monospace;font-size:.82rem">
+              show = y &gt; <span id="th">78</span><br>
+              y = <span id="y-val">0</span>
+            </div>
+            <div class="val" id="show-val" style="font-size:1rem;margin-top:8px">show = false</div>
+          </div>
+          <div class="box" style="margin-top:12px">
+            <div class="title">阈值</div>
+            <div class="ctrl">
+              <button class="btn gray" onclick="setThreshold(40)">40</button>
+              <button class="btn gray" onclick="setThreshold(78)">78</button>
+              <button class="btn gray" onclick="setThreshold(120)">120</button>
+            </div>
+            <div class="muted">阈值应等于头部实际高度，写死容易不同步。</div>
+          </div>
+        </div>
+      </div>
+      <div class="note" id="sticky-note">滚过 78px 时吸顶条滑下来。sticky 保留占位，下面的内容不会跳。</div>
+    </div>
+  </div>
+
+  <!-- tab3 -->
+  <div class="panel" id="panel-dedupe">
+    <div class="card">
+      <h2>三种实现，同一时刻发起三次请求</h2>
+      <div class="ctrl">
+        <button class="btn red" onclick="runScenario('naive')">无缓存</button>
+        <button class="btn amber" onclick="runScenario('result')">只缓存结果</button>
+        <button class="btn green" onclick="runScenario('promise')">缓存进行中的 Promise</button>
+        <button class="btn gray" onclick="resetDedupe()">清空</button>
+      </div>
+      <div class="two">
+        <div class="box bad"><div class="title">实际发出的请求数</div><div class="val" id="req-count">0</div><div class="muted" id="req-desc">点上面任意一种实现。</div></div>
+        <div class="box"><div class="title">调用方拿到的数据</div><div id="caller-result" style="font-size:.82rem">—</div></div>
+      </div>
+      <div class="log" id="dedupe-log"></div>
+      <div class="note">关键差别：并发三次时，前两个调用都还没拿到结果，所以「只看有没有结果」的缓存拦不住第二次请求。</div>
+    </div>
+  </div>
+
+  <!-- tab4 -->
+  <div class="panel" id="panel-cards">
+    <div class="card">
+      <h2>速查卡（点击翻转）</h2>
+      <div class="cards" id="cards"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+/* ---------------- tab1 路由 ---------------- */
+var ROUTES = [
+  { path: '/', label: '/（首页）', layout: true, body: '首页内容：轮播 + 分类楼层 + 猜你喜欢' },
+  { path: '/category/101', label: '/category/101（一级分类）', layout: true, body: '分类页内容：面包屑 + 侧边分类 + 商品列表' },
+  { path: '/category/sub/101', label: '/category/sub/101（二级分类）', layout: true, body: '二级分类：筛选栏 + 无限加载列表' },
+  { path: '/detail/2001', label: '/detail/2001（商品详情）', layout: true, body: '商品详情：图集 + SKU 选择 + 加入购物车' },
+  { path: '/cart', label: '/cart（购物车）', layout: true, body: '购物车：列表 + 全选 + 结算栏' },
+  { path: '/login', label: '/login（登录页）', layout: false, body: '登录页：整页排版，不套外壳' },
+  { path: '/pay/3001', label: '/pay/3001（支付页）', layout: false, body: '支付页：倒计时 + 支付方式，不套外壳' },
+  { path: '/member/order', label: '/member/order（会员中心）', layout: false, body: '会员中心：左侧菜单 + 订单列表，不套外壳' }
+];
+var curRoute = 0;
+
+function renderRoutes() {
+  var box = document.getElementById('routes');
+  box.innerHTML = '';
+  ROUTES.forEach(function (r, i) {
+    var d = document.createElement('div');
+    d.className = 'route-item' + (i === curRoute ? ' active' : '');
+    d.innerHTML = esc(r.label) + ' <small>' + (r.layout ? '套外壳' : '独立页面') + '</small>';
+    d.onclick = function () { selectRoute(i); };
+    box.appendChild(d);
+  });
+}
+
+function selectRoute(i) {
+  curRoute = i;
+  var r = ROUTES[i];
+  ['scr-nav', 'scr-head', 'scr-foot'].forEach(function (id) {
+    document.getElementById(id).classList.toggle('hide', !r.layout);
+  });
+  document.getElementById('scr-body').textContent = r.body;
+  document.getElementById('route-note').textContent = r.layout
+    ? '这个地址是 Layout 的 children，外壳（导航 / 头部 / 底部）保持不变，只有中间内容区被替换。'
+    : '这个地址是顶层路由，不套 Layout —— 通常是登录、支付、会员中心这类需要整页排版的页面。';
+  renderRoutes();
+}
+
+/* ---------------- tab2 吸顶 ---------------- */
+var STICKY_TH = 78;
+function onScroll(v) {
+  v = Number(v);
+  var show = v > STICKY_TH;
+  document.getElementById('scroll-val').textContent = v + ' px';
+  document.getElementById('y-val').textContent = v;
+  document.getElementById('show-val').textContent = 'show = ' + show;
+  document.getElementById('sd-sticky').classList.toggle('off', !show);
+  var box = document.getElementById('sticky-box');
+  box.className = 'box ' + (show ? 'ok' : '');
+  document.getElementById('sticky-note').textContent = show
+    ? '已超过阈值，吸顶条显示。因为用的是 sticky，它原本占的位置还在，下方内容不会跳动。'
+    : '未超过阈值，吸顶条隐藏。往下拖滑块试试。';
+}
+function setThreshold(v) {
+  STICKY_TH = v;
+  document.getElementById('th').textContent = v;
+  onScroll(document.getElementById('scroll').value);
+}
+
+/* ---------------- tab3 去重 ---------------- */
+var reqCount = 0;
+function resetDedupe() {
+  reqCount = 0;
+  document.getElementById('req-count').textContent = '0';
+  document.getElementById('req-desc').textContent = '点上面任意一种实现。';
+  document.getElementById('caller-result').textContent = '—';
+  document.getElementById('dedupe-log').innerHTML = '';
+}
+function dlog(msg, cls) {
+  var box = document.getElementById('dedupe-log');
+  var line = document.createElement('div');
+  line.innerHTML = '<span class="t">' + new Date().toLocaleTimeString('zh-CN', { hour12: false }) +
+    '</span> <span class="' + (cls || '') + '">' + esc(msg) + '</span>';
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function runScenario(kind) {
+  resetDedupe();
+  var list = [];
+  var pending = null;
+  var calls = 3;
+
+  if (kind === 'naive') {
+    dlog('无缓存：三次调用各自判断 list 为空，各自发请求', 'r');
+    for (var i = 0; i < calls; i++) {
+      reqCount++;
+      dlog('调用 ' + (i + 1) + '：list 为空 → 发请求 #' + reqCount, 'r');
+    }
+    setTimeout(function () {
+      list = ['分类A', '分类B', '分类C'];
+      finish(kind);
+    }, 600);
+  } else if (kind === 'result') {
+    dlog('只缓存结果：第一次发请求，但结果还没回来', 'y');
+    for (var j = 0; j < calls; j++) {
+      if (list.length) {
+        dlog('调用 ' + (j + 1) + '：命中缓存', 'g');
+      } else {
+        reqCount++;
+        dlog('调用 ' + (j + 1) + '：list 为空 → 发请求 #' + reqCount, 'y');
+      }
+    }
+    setTimeout(function () {
+      list = ['分类A', '分类B', '分类C'];
+      finish(kind);
+    }, 600);
+  } else {
+    dlog('缓存进行中的 Promise：第一次创建，后两次共享', 'g');
+    for (var k = 0; k < calls; k++) {
+      if (!pending) {
+        reqCount++;
+        pending = 'P';
+        dlog('调用 ' + (k + 1) + '：创建请求 #' + reqCount + '，并把 Promise 记下来', 'g');
+      } else {
+        dlog('调用 ' + (k + 1) + '：复用同一个 Promise，不发新请求', 'g');
+      }
+    }
+    setTimeout(function () {
+      list = ['分类A', '分类B', '分类C'];
+      pending = null;
+      finish(kind);
+    }, 600);
+  }
+
+  document.getElementById('req-count').textContent = reqCount;
+  document.getElementById('req-desc').textContent = '三种实现，同一时刻各调用 3 次。';
+  document.getElementById('caller-result').textContent = '等待中…';
+}
+
+function finish(kind) {
+  document.getElementById('req-count').textContent = reqCount;
+  document.getElementById('caller-result').textContent = '分类A / 分类B / 分类C（三个调用方都拿到了）';
+  var text = {
+    naive: '三个请求都发了，浪费两次网络往返。',
+    result: '仍然发了 ' + reqCount + ' 次：并发时「看有没有结果」拦不住，因为结果都还没回来。',
+    promise: '只发了 1 次，三个调用方共享同一个 Promise 的结果。'
+  }[kind];
+  dlog(text, kind === 'promise' ? 'g' : 'r');
+  document.getElementById('req-desc').textContent = text;
+}
+
+/* ---------------- tab4 速查卡 ---------------- */
+var CARDS = [
+  { q: 'children', a: '嵌套路由的子页面声明。Layout 在父级，页面在 children。' },
+  { q: 'RouterView', a: '子页面的渲染出口。不加 name 时渲染默认视图。' },
+  { q: 'exact-active-class', a: '精确匹配才激活。解决父路径被误高亮的问题。' },
+  { q: 'position: sticky', a: '到边界贴住，保留文档流占位。祖先有 transform 会失效。' },
+  { q: 'useScroll', a: '返回滚动位置的 composable，内部处理节流与清理。' },
+  { q: 'iconfont', a: '图标做成字形，用 color / font-size 控制。记得 font-style: normal。' },
+  { q: 'pending Promise', a: '并发去重的载体。必须在 finally 里清空，否则一次失败永久失败。' },
+  { q: 'flex: 1', a: '让内容区撑满剩余高度，避免短页面底部浮在中间。' }
+];
+
+function renderCards() {
+  var box = document.getElementById('cards');
+  box.innerHTML = '';
+  CARDS.forEach(function (c) {
+    var d = document.createElement('div');
+    d.className = 'flip';
+    d.innerHTML = '<div class="q">' + esc(c.q) + '</div><div class="a">' + esc(c.a) +
+      '</div><div class="hint">点击查看说明</div>';
+    d.onclick = function () { d.classList.toggle('open'); };
+    box.appendChild(d);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  renderRoutes();
+  selectRoute(0);
+  onScroll(0);
+  renderCards();
+});
+</script>
+</body>
+</html>

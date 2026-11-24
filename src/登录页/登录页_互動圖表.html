@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录页 · 互动图表</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 14px; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px;
+    font-size: 13px; color: #475569; cursor: pointer; transition: all .15s;
+  }
+  .tab-btn:hover { border-color: #94a3b8; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .panel { display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel .hint { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid #3b82f6; background: #3b82f6;
+    color: #fff; font-size: 13px; cursor: pointer;
+  }
+  .btn.ghost { background: #fff; color: #3b82f6; }
+  .btn.plain { background: #fff; color: #475569; border-color: #cbd5e1; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .lbl { font-size: 12px; color: #64748b; }
+  .seg { display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+  .seg button {
+    border: 0; background: #fff; padding: 6px 12px; font-size: 12px; color: #475569; cursor: pointer;
+    border-right: 1px solid #e2e8f0;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: #3b82f6; color: #fff; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { flex: 1; min-width: 104px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; }
+  .stat span { display: block; font-size: 11px; color: #64748b; }
+  .stat b { font-size: 15px; word-break: break-all; }
+  .stat b.bad { color: #ef4444; }
+  .stat b.good { color: #22c55e; }
+  .field { display: grid; grid-template-columns: 52px 1fr; gap: 8px 10px; align-items: center; margin-bottom: 8px; }
+  .field > label { font-size: 12px; color: #64748b; }
+  .field input[type=text], .field input[type=password] {
+    width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  .field input:focus { border-color: #3b82f6; }
+  .field input.bad { border-color: #ef4444; background: #fef2f2; }
+  .field input.good { border-color: #22c55e; }
+  .chk { font-size: 12px; color: #475569; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .msg { grid-column: 2; font-size: 12px; min-height: 16px; line-height: 16px; }
+  .msg.bad { color: #ef4444; }
+  .msg.good { color: #22c55e; }
+  .steps { margin: 4px 0 14px; }
+  .step {
+    display: grid; grid-template-columns: 14px 1fr 62px; gap: 10px; align-items: center;
+    padding: 8px 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 6px; background: #fff;
+    transition: all .2s;
+  }
+  .step .dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+  .step b { font-size: 12px; display: block; }
+  .step span { font-size: 11px; color: #94a3b8; }
+  .step em { font-size: 11px; font-style: normal; color: #94a3b8; text-align: right; }
+  .step.doing { border-color: #f59e0b; background: #fffbeb; }
+  .step.doing .dot { background: #f59e0b; animation: blink .8s infinite alternate; }
+  .step.doing em { color: #b45309; }
+  .step.ok { border-color: #bbf7d0; background: #f0fdf4; }
+  .step.ok .dot { background: #22c55e; }
+  .step.ok em { color: #15803d; }
+  .step.fail { border-color: #fecaca; background: #fef2f2; }
+  .step.fail .dot { background: #ef4444; }
+  .step.fail em { color: #b91c1c; }
+  @keyframes blink { from { opacity: .3; } to { opacity: 1; } }
+  .log { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 12px; max-height: 240px; overflow-y: auto; }
+  .log-row {
+    display: grid; grid-template-columns: 46px 1fr; gap: 4px 10px; padding: 7px 10px;
+    border-bottom: 1px solid #f1f5f9; font-size: 11px;
+  }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row code { grid-column: 2; color: #64748b; word-break: break-all; }
+  .log-row em { grid-column: 2; font-style: normal; color: #475569; }
+  .log-empty { padding: 14px 10px; font-size: 12px; color: #94a3b8; }
+  .code-200 { color: #22c55e; font-weight: 600; }
+  .code-401 { color: #ef4444; font-weight: 600; }
+  .note { margin-top: 12px; padding: 10px 12px; background: #f1f5f9; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; font-size: 12px; color: #475569; }
+  .note.badnote { background: #fef2f2; border-left-color: #ef4444; }
+  .note code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .qc { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .qc h3 { margin: 0 0 6px; font-size: 13px; color: #3b82f6; }
+  .qc p { margin: 0; font-size: 12px; color: #475569; }
+  .qc code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  @media (max-width: 560px) { .field { grid-template-columns: 1fr; } .msg { grid-column: 1; } }
+</style>
+</head>
+<body>
+
+<h1>登录页 · 互动图表</h1>
+<p class="lead">四个实验：校验规则该在什么时候触发、点一次登录到底发生了什么、token 如何被拦截器带上又被 401 打回，以及一页速查。</p>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('validate', this)">1. 校验时机</button>
+  <button class="tab-btn" onclick="switchTab('flow', this)">2. 登录到跳转</button>
+  <button class="tab-btn" onclick="switchTab('token', this)">3. token 与 401</button>
+  <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+</div>
+
+<!-- ========== 1. 校验时机 ========== -->
+<div class="panel active" id="panel-validate">
+  <h2>同一份规则，换三种触发时机</h2>
+  <p class="hint">先选时机，再在输入框里打字、离开输入框、点提交，观察提示什么时候出现、出现了几次。</p>
+
+  <div class="row">
+    <span class="lbl">触发时机</span>
+    <div class="seg" id="seg-trigger">
+      <button onclick="setTrigger('change', this)">change（输入即校验）</button>
+      <button class="on" onclick="setTrigger('blur', this)">blur（失焦校验）</button>
+      <button onclick="setTrigger('submit', this)">submit（提交才校验）</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>账户</label>
+    <input id="f-account" type="text" placeholder="留空试试，或者随便填几个字"
+           oninput="onInput('account')" onblur="onBlur('account')">
+    <span class="msg" id="m-account"></span>
+  </div>
+  <div class="field">
+    <label>密码</label>
+    <input id="f-password" type="text" placeholder="6-14 个字符"
+           oninput="onInput('password')" onblur="onBlur('password')">
+    <span class="msg" id="m-password"></span>
+  </div>
+  <div class="field">
+    <label>协议</label>
+    <label class="chk"><input id="f-agree" type="checkbox" onchange="onInput('agree')"> 我已同意隐私条款和服务条款</label>
+    <span class="msg" id="m-agree"></span>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn" onclick="submitForm()">点击登录</button>
+    <button class="btn plain" onclick="resetValidate()">重置</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>校验次数</span><b id="v-count">0</b></div>
+    <div class="stat"><span>已触碰字段</span><b id="v-touched">0 / 3</b></div>
+    <div class="stat"><span>提交结果</span><b id="v-result">—</b></div>
+  </div>
+
+  <div class="note" id="v-note">当前：blur。只有离开输入框才会提示，用户打字时页面保持安静；点提交时仍会全量校验一次。</div>
+</div>
+
+<!-- ========== 2. 登录到跳转 ========== -->
+<div class="panel" id="panel-flow">
+  <h2>点一次「登录」，其实发生了六件事</h2>
+  <p class="hint">选一种场景与跳转方式，点「执行登录」，看每一步的状态、失败点与最终的历史记录。</p>
+
+  <div class="row">
+    <span class="lbl">场景</span>
+    <div class="seg" id="seg-flow">
+      <button class="on" onclick="setFlowCase('ok', this)">账号密码正确</button>
+      <button onclick="setFlowCase('bad', this)">密码错误（接口 400）</button>
+      <button onclick="setFlowCase('weak', this)">密码太短（校验不通过）</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="lbl">跳转方式</span>
+    <div class="seg" id="seg-nav">
+      <button class="on" onclick="setNav('replace', this)">router.replace</button>
+      <button onclick="setNav('push', this)">router.push</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <button class="btn" id="flow-run" onclick="runFlow()">执行登录</button>
+    <span class="lbl">起始地址：/login?redirect=/member</span>
+  </div>
+
+  <div class="steps" id="flow-steps"></div>
+
+  <div class="stats">
+    <div class="stat"><span>最终地址</span><b id="flow-url">/login</b></div>
+    <div class="stat"><span>历史记录</span><b id="flow-hist">/login</b></div>
+    <div class="stat"><span>总耗时</span><b id="flow-time">0 ms</b></div>
+  </div>
+
+  <div class="note" id="flow-note">先点一次「执行登录」。注意：任何一步失败，后面的步骤都不会执行。</div>
+</div>
+
+<!-- ========== 3. token 与 401 ========== -->
+<div class="panel" id="panel-token">
+  <h2>拦截器：一次装好，处处生效</h2>
+  <p class="hint">切换两个开关发几次请求，看请求头里带了什么、服务端回什么、响应拦截器又做了什么。</p>
+
+  <div class="row">
+    <label class="chk"><input type="checkbox" id="t-on" checked onchange="renderTokenNote()"> 开启请求拦截器</label>
+    <label class="chk"><input type="checkbox" id="t-exp" onchange="renderTokenNote()"> token 已过期</label>
+    <button class="btn" onclick="sendReq()">发一个请求</button>
+    <button class="btn plain" onclick="sendThree()">连发三个</button>
+    <button class="btn plain" onclick="relogin()">模拟重新登录</button>
+    <button class="btn plain" onclick="resetToken()">重置</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>成功</span><b id="t-ok" class="good">0</b></div>
+    <div class="stat"><span>401</span><b id="t-401" class="bad">0</b></div>
+    <div class="stat"><span>被踢回登录页</span><b id="t-redirect">0</b></div>
+    <div class="stat"><span>本地 token</span><b id="t-local">有</b></div>
+  </div>
+
+  <div class="log" id="t-log"></div>
+
+  <div class="note" id="t-note">当前：拦截器开启，token 有效。每个请求都会自动带上 <code>Authorization: Bearer …</code>。</div>
+</div>
+
+<!-- ========== 4. 速查卡 ========== -->
+<div class="panel" id="panel-cards">
+  <h2>登录页速查卡</h2>
+  <p class="hint">八张卡覆盖本章所有容易写错的点。</p>
+  <div class="cards" id="card-grid"></div>
+</div>
+
+<script>
+/* ---------- tab ---------- */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'cards') renderCards();
+  if (name === 'flow') renderSteps();
+}
+
+/* ---------- 1. 校验时机 ---------- */
+var FIELDS = ['account', 'password', 'agree'];
+var vMode = 'blur';
+var vTouched = { account: false, password: false, agree: false };
+var vCount = 0;
+
+function getVal(name) {
+  var el = document.getElementById('f-' + name);
+  if (!el) return null;
+  return name === 'agree' ? el.checked : el.value;
+}
+
+function checkField(name) {
+  var val = getVal(name);
+  if (name === 'account') {
+    return (!val || !String(val).trim()) ? '用户名不能为空' : '';
+  }
+  if (name === 'password') {
+    if (!val) return '密码不能为空';
+    if (val.length < 6 || val.length > 14) return '密码长度要求 6-14 个字符';
+    return '';
+  }
+  if (name === 'agree') {
+    return val ? '' : '请先同意协议';
+  }
+  return '';
+}
+
+function paintField(name) {
+  var msgEl = document.getElementById('m-' + name);
+  var inputEl = document.getElementById('f-' + name);
+  if (!msgEl) return;
+  if (!vTouched[name]) {
+    msgEl.textContent = '';
+    msgEl.className = 'msg';
+    if (inputEl && inputEl.type !== 'checkbox') inputEl.className = '';
+    return;
+  }
+  var err = checkField(name);
+  msgEl.textContent = err || '通过';
+  msgEl.className = 'msg ' + (err ? 'bad' : 'good');
+  if (inputEl && inputEl.type !== 'checkbox') inputEl.className = err ? 'bad' : 'good';
+}
+
+function runCheck(name) {
+  vTouched[name] = true;
+  vCount++;
+  paintField(name);
+  syncValidateStats();
+}
+
+function onInput(name) {
+  if (vMode === 'change' || name === 'agree') runCheck(name);
+}
+
+function onBlur(name) {
+  if (vMode === 'blur') runCheck(name);
+}
+
+function syncValidateStats() {
+  var n = 0;
+  FIELDS.forEach(function (f) { if (vTouched[f]) n++; });
+  document.getElementById('v-count').textContent = vCount;
+  document.getElementById('v-touched').textContent = n + ' / 3';
+}
+
+function submitForm() {
+  FIELDS.forEach(function (f) { vTouched[f] = true; });
+  vCount += FIELDS.length;
+  FIELDS.forEach(paintField);
+  var ok = FIELDS.every(function (f) { return !checkField(f); });
+  var res = document.getElementById('v-result');
+  res.textContent = ok ? '通过' : '未通过';
+  res.className = ok ? 'good' : 'bad';
+  var note = document.getElementById('v-note');
+  note.className = 'note';
+  note.textContent = ok
+    ? '全部通过，可以发登录请求了。注意：无论前面选的是哪种时机，提交时都一定全量校验一次——这是最后一道闸。'
+    : '有字段没通过，请求不会发出。现在的校验次数里包含了一次全量校验（3 次）。';
+  syncValidateStats();
+}
+
+function setTrigger(mode, btn) {
+  vMode = mode;
+  document.querySelectorAll('#seg-trigger button').forEach(function (b) { b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var note = document.getElementById('v-note');
+  note.className = 'note';
+  if (mode === 'change') {
+    note.textContent = '当前：change。每敲一个字符就校验一次。密码这样设，用户打第一个键就会看到「长度不足」，像在被嘲笑。';
+  } else if (mode === 'blur') {
+    note.textContent = '当前：blur。只有离开输入框才会提示，用户打字时页面保持安静；点提交时仍会全量校验一次。';
+  } else {
+    note.textContent = '当前：submit。打字和失焦都不提示，只有点登录时才一次全量校验。最安静，但用户要等到点完才知道哪里错。';
+  }
+  resetValidate();
+}
+
+function resetValidate() {
+  vTouched = { account: false, password: false, agree: false };
+  vCount = 0;
+  document.getElementById('f-account').value = '';
+  document.getElementById('f-password').value = '';
+  document.getElementById('f-agree').checked = false;
+  FIELDS.forEach(paintField);
+  var res = document.getElementById('v-result');
+  res.textContent = '—';
+  res.className = '';
+  syncValidateStats();
+}
+
+/* ---------- 2. 登录流程 ---------- */
+var STEPS = [
+  { name: '校验表单', desc: 'await validate()，false 就停在这里' },
+  { name: '请求登录接口', desc: 'POST /api/login { account, password }' },
+  { name: '写入 Pinia', desc: 'userInfo.value = res.result（含 token）' },
+  { name: '持久化', desc: 'persist 插件把 userInfo 写进 localStorage' },
+  { name: '提示成功', desc: 'ElMessage({ type: "success" })' },
+  { name: '跳转', desc: 'router.replace(redirect || "/")' }
+];
+var flowCase = 'ok';
+var navMode = 'replace';
+var flowStatus = ['wait', 'wait', 'wait', 'wait', 'wait', 'wait'];
+var flowIdx = 0;
+var flowFailed = -1;
+var flowStart = 0;
+var flowTimer = null;
+
+function setFlowCase(c, btn) {
+  flowCase = c;
+  document.querySelectorAll('#seg-flow button').forEach(function (b) { b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+}
+
+function setNav(m, btn) {
+  navMode = m;
+  document.querySelectorAll('#seg-nav button').forEach(function (b) { b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+}
+
+function renderSteps() {
+  var wrap = document.getElementById('flow-steps');
+  if (!wrap) return;
+  var html = '';
+  STEPS.forEach(function (s, i) {
+    var st = flowStatus[i] || 'wait';
+    var label = st === 'wait' ? '待执行' : st === 'doing' ? '执行中' : st === 'ok' ? '完成' : '失败';
+    html += '<div class="step ' + st + '">' +
+      '<span class="dot"></span>' +
+      '<div><b>' + (i + 1) + '. ' + s.name + '</b><span>' + s.desc + '</span></div>' +
+      '<em>' + label + '</em>' +
+      '</div>';
+  });
+  wrap.innerHTML = html;
+}
+
+function runFlow() {
+  if (flowTimer) clearTimeout(flowTimer);
+  flowStatus = ['wait', 'wait', 'wait', 'wait', 'wait', 'wait'];
+  flowIdx = 0;
+  flowFailed = flowCase === 'weak' ? 0 : (flowCase === 'bad' ? 1 : -1);
+  flowStart = Date.now();
+  document.getElementById('flow-url').textContent = '/login?redirect=/member';
+  document.getElementById('flow-hist').textContent = '/login?redirect=/member';
+  document.getElementById('flow-time').textContent = '0 ms';
+  document.getElementById('flow-run').disabled = true;
+  renderSteps();
+  stepNext();
+}
+
+function stepNext() {
+  if (flowIdx >= STEPS.length) { flowDone(true); return; }
+  if (flowIdx === flowFailed) {
+    flowStatus[flowIdx] = 'fail';
+    renderSteps();
+    flowDone(false);
+    return;
+  }
+  flowStatus[flowIdx] = 'doing';
+  renderSteps();
+  flowTimer = setTimeout(function () {
+    flowStatus[flowIdx] = 'ok';
+    renderSteps();
+    flowIdx++;
+    flowTimer = setTimeout(stepNext, 140);
+  }, 420);
+}
+
+function flowDone(ok) {
+  document.getElementById('flow-run').disabled = false;
+  var ms = Date.now() - flowStart;
+  document.getElementById('flow-time').textContent = ms + ' ms';
+  var urlEl = document.getElementById('flow-url');
+  var histEl = document.getElementById('flow-hist');
+  var note = document.getElementById('flow-note');
+
+  if (!ok) {
+    urlEl.textContent = '/login?redirect=/member';
+    histEl.textContent = '/login?redirect=/member';
+    histEl.className = '';
+    note.className = 'note badnote';
+    note.textContent = flowFailed === 0
+      ? '第 1 步就停了：validate() 返回 false，接口不会发，store 不会写，页面一动不动。这就是「先验票」的意义。'
+      : '第 2 步停了：接口返回 400，token 没拿到。此时必须 catch 住并提示用户，否则页面没有任何反应。';
+    return;
+  }
+
+  urlEl.textContent = '/member';
+  if (navMode === 'replace') {
+    histEl.textContent = '/';
+    histEl.className = 'good';
+    note.className = 'note';
+    note.textContent = '用 replace：登录页被「替换」掉，历史记录里没有它。用户按返回键会回到进入登录页之前的页面。';
+  } else {
+    histEl.textContent = '/login → /member';
+    histEl.className = 'bad';
+    note.className = 'note badnote';
+    note.textContent = '用 push：登录页留在历史记录里。用户按返回键会看到登录表单——而他明明已经登录了。';
+  }
+}
+
+/* ---------- 3. token 与 401 ---------- */
+var tokenAlive = true;
+var okCount = 0;
+var unauthCount = 0;
+var redirectCount = 0;
+
+function pushLog(status, url, header, action) {
+  var log = document.getElementById('t-log');
+  var row = document.createElement('div');
+  row.className = 'log-row';
+  row.innerHTML = '<span class="code-' + status + '">' + status + '</span>' +
+    '<b style="font-size:11px">GET ' + url + '</b>' +
+    '<code>' + header + '</code>' +
+    '<em>' + action + '</em>';
+  if (log.querySelector('.log-empty')) log.innerHTML = '';
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderTokenStats() {
+  document.getElementById('t-ok').textContent = okCount;
+  document.getElementById('t-401').textContent = unauthCount;
+  document.getElementById('t-redirect').textContent = redirectCount;
+  var local = document.getElementById('t-local');
+  local.textContent = tokenAlive ? '有' : '已清空';
+  local.className = tokenAlive ? 'good' : 'bad';
+}
+
+function sendReq() {
+  var on = document.getElementById('t-on').checked;
+  var expired = document.getElementById('t-exp').checked;
+  var url = '/api/user/info';
+
+  if (!tokenAlive) {
+    pushLog(401, url, '（未携带 token）', '响应拦截器：清空 userInfo → 跳 /login?redirect=/member');
+    unauthCount++;
+    redirectCount++;
+    renderTokenStats();
+    return;
+  }
+
+  if (on && !expired) {
+    pushLog(200, url, 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9…', '直接返回数据，组件拿到 res');
+    okCount++;
+  } else if (on && expired) {
+    tokenAlive = false;
+    pushLog(401, url, 'Authorization: Bearer <已过期>', '响应拦截器：清空 userInfo → 跳 /login?redirect=/member');
+    unauthCount++;
+    redirectCount++;
+  } else {
+    pushLog(401, url, '（未携带 token）', '响应拦截器：清空 userInfo → 跳 /login?redirect=/member');
+    unauthCount++;
+    redirectCount++;
+  }
+  renderTokenStats();
+  renderTokenNote();
+}
+
+function sendThree() {
+  sendReq();
+  setTimeout(sendReq, 260);
+  setTimeout(sendReq, 520);
+}
+
+function relogin() {
+  tokenAlive = true;
+  document.getElementById('t-exp').checked = false;
+  renderTokenStats();
+  renderTokenNote();
+}
+
+function resetToken() {
+  tokenAlive = true;
+  okCount = 0;
+  unauthCount = 0;
+  redirectCount = 0;
+  document.getElementById('t-exp').checked = false;
+  var log = document.getElementById('t-log');
+  log.innerHTML = '<div class="log-empty">还没有请求。点上面的按钮发一个试试。</div>';
+  renderTokenStats();
+  renderTokenNote();
+}
+
+function renderTokenNote() {
+  var on = document.getElementById('t-on').checked;
+  var expired = document.getElementById('t-exp').checked;
+  var note = document.getElementById('t-note');
+  note.className = 'note';
+  if (!on) {
+    note.className = 'note badnote';
+    note.textContent = '拦截器关闭：请求头里没有 token，服务端一律回 401。这就是「逐个接口手写 token 一定会漏」的样子。';
+  } else if (expired) {
+    note.className = 'note badnote';
+    note.textContent = '拦截器开启但 token 已过期：请求带着旧令牌发出，服务端回 401，响应拦截器清空本地并把你送回登录页。';
+  } else {
+    note.textContent = '拦截器开启、token 有效：每个请求自动带上 Authorization: Bearer …，业务代码里一行都不用写。';
+  }
+}
+
+/* ---------- 4. 速查卡 ---------- */
+function renderCards() {
+  var grid = document.getElementById('card-grid');
+  if (!grid) return;
+  var cards = [
+    ['登录页在 Layout 外', '登录页一旦住进外壳，就会触发依赖登录态的请求，一进来满屏 401。'],
+    ['成功用 replace', 'push 会在历史记录里留下登录页，用户按返回键就看到「又没登录」。'],
+    ['redirect 要校验', '只接受以单个 <code>/</code> 开头的站内路径，<code>//host</code> 必须排掉。'],
+    ['prop 必须对上', '<code>prop="account"</code> 与 <code>rules.account</code> 是字符串匹配，错一个字就静默失效。'],
+    ['时机分字段设', '密码用 <code>blur</code>，勾选用 <code>change</code>，提交时永远全量校验一次。'],
+    ['validate 会 reject', '<code>await validate()</code> 失败时抛错，必须 <code>.catch(() =&gt; false)</code>。'],
+    ['拦截器延迟取 store', '<code>useUserStore()</code> 写进拦截器函数体，别写在模块顶层。'],
+    ['退出先清后跳', '清理放 <code>finally</code>，网络失败也必须能退出去。']
+  ];
+  grid.innerHTML = cards.map(function (c) {
+    return '<div class="qc"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
+  }).join('');
+}
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  renderSteps();
+  resetToken();
+  renderCards();
+  syncValidateStats();
+});
+</script>
+</body>
+</html>

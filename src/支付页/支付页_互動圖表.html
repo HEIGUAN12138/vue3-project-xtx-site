@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>支付页 · 互动图表</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 14px; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px;
+    font-size: 13px; color: #475569; cursor: pointer; transition: all .15s;
+  }
+  .tab-btn:hover { border-color: #94a3b8; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .panel { display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel .hint { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid #3b82f6; background: #3b82f6;
+    color: #fff; font-size: 13px; cursor: pointer;
+  }
+  .btn.plain { background: #fff; color: #475569; border-color: #cbd5e1; }
+  .btn.ghost { background: #fff; color: #3b82f6; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .lbl { font-size: 12px; color: #64748b; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
+  .field span { font-size: 11px; color: #64748b; }
+  .field input {
+    padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; color: #0f172a;
+  }
+  .seg { display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+  .seg button {
+    border: 0; background: #fff; padding: 6px 12px; font-size: 12px; color: #475569; cursor: pointer;
+    border-right: 1px solid #e2e8f0;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: #3b82f6; color: #fff; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { flex: 1; min-width: 100px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; }
+  .stat span { display: block; font-size: 11px; color: #64748b; }
+  .stat b { font-size: 15px; }
+  .stat b.bad { color: #ef4444; }
+  .stat b.good { color: #22c55e; }
+  .stat b.warn { color: #f59e0b; }
+  .urlbox {
+    background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 10px 12px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
+    word-break: break-all; line-height: 1.7; margin-bottom: 12px;
+  }
+  .urlbox .hl { color: #fbbf24; }
+  .urlbox .ok { color: #4ade80; }
+  table.box { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+  table.box th { text-align: left; font-weight: 500; color: #64748b; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding: 6px 8px; }
+  table.box td { border-bottom: 1px solid #f1f5f9; padding: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; }
+  table.box tr:last-child td { border-bottom: 0; }
+  table.box td.red { color: #ef4444; font-weight: 600; }
+  table.box td.green { color: #15803d; font-weight: 600; }
+  table.box .empty { text-align: center; color: #94a3b8; padding: 16px; font-family: inherit; }
+  .log { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 12px; max-height: 170px; overflow-y: auto; }
+  .log-row { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #475569; }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row.bad { color: #b91c1c; background: #fef2f2; }
+  .log-row.ok { color: #15803d; }
+  .log-empty { padding: 14px 10px; font-size: 12px; color: #94a3b8; }
+  .note { margin-top: 12px; padding: 10px 12px; background: #f1f5f9; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; font-size: 12px; color: #475569; }
+  .note.badnote { background: #fef2f2; border-left-color: #ef4444; }
+  .note.goodnote { background: #f0fdf4; border-left-color: #22c55e; }
+  .note code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; cursor: pointer; }
+  .chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .node {
+    flex: 1; min-width: 108px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;
+    background: #f8fafc; font-size: 11.5px; color: #475569; text-align: center;
+  }
+  .node b { display: block; font-size: 12px; color: #0f172a; }
+  .node.out { border-color: #f59e0b; background: #fffbeb; }
+  .node.here { border-color: #3b82f6; background: #eff6ff; }
+  .arrow { color: #94a3b8; font-size: 12px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 560px) { .cols { grid-template-columns: 1fr; } }
+  .card {
+    border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc;
+  }
+  .card h3 { margin: 0 0 8px; font-size: 13px; color: #0f172a; }
+  .card .val { font-size: 26px; font-weight: 700; line-height: 1.2; }
+  .card .val.bad { color: #ef4444; }
+  .card .val.good { color: #22c55e; }
+  .card p { margin: 4px 0 0; font-size: 11.5px; color: #64748b; }
+  .browser {
+    border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; margin-bottom: 12px;
+  }
+  .browser .bar { background: #f1f5f9; padding: 6px 10px; font-size: 11px; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+  .browser .bar input {
+    width: 100%; border: 0; background: #fff; padding: 5px 8px; border-radius: 5px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: #0f172a;
+  }
+  .result { padding: 22px; text-align: center; }
+  .result .icon { font-size: 40px; line-height: 1; }
+  .result .tit { font-size: 16px; font-weight: 600; margin-top: 8px; }
+  .result .sub { font-size: 11.5px; color: #64748b; margin-top: 4px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .qc { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .qc h3 { margin: 0 0 6px; font-size: 13px; color: #3b82f6; }
+  .qc p { margin: 0; font-size: 12px; color: #475569; }
+  .qc code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>支付页 · 互动图表</h1>
+<p class="lead">四个实验：拼一个能回来的地址、地址栏能不能骗过系统、定时器为什么会变慢，以及一页速查。</p>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('link', this)">1. 拼回跳地址</button>
+  <button class="tab-btn" onclick="switchTab('truth', this)">2. 结果信不信</button>
+  <button class="tab-btn" onclick="switchTab('timer', this)">3. 倒计时</button>
+  <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+</div>
+
+<!-- ========== 1. 拼回跳地址 ========== -->
+<div class="panel active" id="panel-link">
+  <h2>一张「送回哪个门」的转诊单</h2>
+  <p class="hint">改改回跳地址，切换编码开关，看支付服务收到了什么。</p>
+
+  <div class="row">
+    <div class="field">
+      <span>订单号 orderId</span>
+      <input id="lk-id" value="978001" oninput="renderLink()">
+    </div>
+    <div class="field">
+      <span>回跳地址 backURL（可改）</span>
+      <input id="lk-back" value="http://127.0.0.1:5173/paycallback?from=pc&amp;lang=zh" oninput="renderLink()">
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="lbl">redirect 是否编码</span>
+    <div class="seg">
+      <button class="on" onclick="setEncode(true, this)">编码（正确）</button>
+      <button onclick="setEncode(false, this)">不编码（错误）</button>
+    </div>
+    <button class="btn plain" onclick="resetLink()">重置为默认</button>
+  </div>
+
+  <div class="urlbox" id="lk-url"></div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>支付服务解析到的参数</h3>
+      <table class="box" style="margin:0">
+        <thead><tr><th>键</th><th>值</th></tr></thead>
+        <tbody id="lk-params"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>用户被送回后的地址栏</h3>
+      <div class="urlbox" id="lk-back-result" style="margin:0;background:#f1f5f9;color:#334155"></div>
+      <p id="lk-back-note" style="margin-top:8px"></p>
+    </div>
+  </div>
+
+  <div class="note" id="lk-note"></div>
+</div>
+
+<!-- ========== 2. 结果信不信 ========== -->
+<div class="panel" id="panel-truth">
+  <h2>地址栏说成功，账本说没付</h2>
+  <p class="hint">先点「回到结果页」，再试着改地址栏，最后点「异步通知送达」。</p>
+
+  <div class="browser">
+    <div class="bar">地址栏（可以随便改）</div>
+    <div class="bar" style="background:#fff;padding:8px 10px">
+      <input id="tf-url" value="http://127.0.0.1:5173/paycallback?payResult=false&amp;orderId=978001" oninput="renderTruth()">
+    </div>
+  </div>
+
+  <div class="row">
+    <button class="btn plain" onclick="fakeSuccess()">把 payResult 改成 true</button>
+    <button class="btn plain" onclick="notifyArrived()">异步通知送达</button>
+    <button class="btn plain" onclick="resetTruth()">重置</button>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>只看地址栏的渲染（前端）</h3>
+      <div class="result">
+        <div class="icon" id="tf-icon">✕</div>
+        <div class="tit" id="tf-tit">支付失败</div>
+        <div class="sub" id="tf-sub">payResult = false</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>服务端订单状态（账本）</h3>
+      <div class="result">
+        <div class="icon" id="tf-srv-icon">⏳</div>
+        <div class="tit" id="tf-srv-tit">待付款</div>
+        <div class="sub" id="tf-srv-sub">orderState = 1</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log" id="tf-log"><div class="log-empty">还没有操作。</div></div>
+
+  <div class="note" id="tf-note"></div>
+</div>
+
+<!-- ========== 3. 倒计时 ========== -->
+<div class="panel" id="panel-timer">
+  <h2>同一段 60 秒，两种算法</h2>
+  <p class="hint">分别试「正常开始」「重复开始」「遇到后台节流」，比较两列的剩余时间。</p>
+
+  <div class="row">
+    <button class="btn" id="tm-start" onclick="tmStart(false)">正常开始</button>
+    <button class="btn plain" onclick="tmStart(true)">重复开始（不清旧定时器）</button>
+    <button class="btn plain" id="tm-slow" onclick="tmToggleSlow()">模拟后台节流</button>
+    <button class="btn plain" onclick="tmReset()">重置</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>真实过去</span><b id="tm-elapsed">0s</b></div>
+    <div class="stat"><span>活跃定时器</span><b id="tm-timers">0</b></div>
+    <div class="stat"><span>页面可见</span><b id="tm-visible">是</b></div>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>计数式：每跳一次减 1</h3>
+      <div class="val bad" id="tm-count">60s</div>
+      <p>回调少跳几次，它就减得少几次，于是「还剩很多」。</p>
+    </div>
+    <div class="card">
+      <h3>差值式：终点减当前时间</h3>
+      <div class="val good" id="tm-diff">60s</div>
+      <p>每次都重新问时钟，回调迟到多久都不影响结果。</p>
+    </div>
+  </div>
+
+  <div class="log" id="tm-log"><div class="log-empty">还没有操作。</div></div>
+
+  <div class="note" id="tm-note">两种写法用的是同一段 60 秒、同一批回调。差别只在于：一个相信「减了多少次」，一个相信「现在几点」。</div>
+</div>
+
+<!-- ========== 4. 速查卡 ========== -->
+<div class="panel" id="panel-cards">
+  <h2>支付页速查卡</h2>
+  <p class="hint">八张卡覆盖本章所有容易写错的点。</p>
+  <div class="cards" id="card-grid"></div>
+</div>
+
+<script>
+/* ---------- tab ---------- */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'cards') renderCards();
+  if (name === 'link') renderLink();
+  if (name === 'truth') renderTruth();
+  if (name === 'timer') renderTimer();
+}
+
+/* ---------- 1. 拼回跳地址 ---------- */
+var lk = { encode: true };
+
+function setEncode(on, btn) {
+  lk.encode = on;
+  document.querySelectorAll('#panel-link .seg button').forEach(function (b) { b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  renderLink();
+}
+
+function resetLink() {
+  document.getElementById('lk-id').value = '978001';
+  document.getElementById('lk-back').value = 'http://127.0.0.1:5173/paycallback?from=pc&lang=zh';
+  setEncode(true, document.querySelectorAll('#panel-link .seg button')[0]);
+}
+
+function renderLink() {
+  var id = document.getElementById('lk-id').value.trim() || 'undefined';
+  var back = document.getElementById('lk-back').value.trim();
+  var redirect = lk.encode ? encodeURIComponent(back) : back;
+  var url = 'http://pcapi-xiaotuxian-front-devtest.itheima.net/pay/aliPay?orderId=' + id + '&redirect=' + redirect;
+
+  var shown = url;
+  if (lk.encode) {
+    shown = 'http://pcapi-xiaotuxian-front-devtest.itheima.net/pay/aliPay?orderId=' + id +
+      '&redirect=<span class="ok">' + escapeHtml(redirect) + '</span>';
+  } else {
+    shown = 'http://pcapi-xiaotuxian-front-devtest.itheima.net/pay/aliPay?orderId=' + id +
+      '&redirect=<span class="hl">' + escapeHtml(redirect) + '</span>';
+  }
+  document.getElementById('lk-url').innerHTML = shown;
+
+  /* 模拟服务端：按 & 切分，每段再按第一个 = 切分 */
+  var qs = url.indexOf('?') >= 0 ? url.slice(url.indexOf('?') + 1) : '';
+  var params = [];
+  qs.split('&').forEach(function (part) {
+    if (!part) return;
+    var eq = part.indexOf('=');
+    var k = eq < 0 ? part : part.slice(0, eq);
+    var v = eq < 0 ? '' : part.slice(eq + 1);
+    params.push({ key: k, value: safeDecode(v) });
+  });
+
+  var tbody = document.getElementById('lk-params');
+  tbody.innerHTML = params.map(function (p) {
+    var extra = (p.key === 'redirect') ? (lk.encode ? 'green' : 'red') : '';
+    return '<tr><td>' + escapeHtml(p.key) + '</td><td class="' + extra + '">' + escapeHtml(p.value) + '</td></tr>';
+  }).join('');
+
+  var redirectParam = params.filter(function (p) { return p.key === 'redirect'; })[0];
+  var extraKeys = params.filter(function (p) { return p.key !== 'orderId' && p.key !== 'redirect'; });
+
+  document.getElementById('lk-back-result').textContent = redirectParam ? redirectParam.value : '（丢失）';
+
+  var noteEl = document.getElementById('lk-back-note');
+  var noteBox = document.getElementById('lk-note');
+
+  if (lk.encode) {
+    noteEl.textContent = '整串原样带回，参数一个不少。';
+    noteBox.className = 'note goodnote';
+    noteBox.innerHTML = '编码之后，<code>?</code>、<code>&amp;</code>、<code>=</code> 都变成 <code>%3F</code>、<code>%26</code>、<code>%3D</code>，支付服务只知道「从这里到那里整段都是 redirect」，不会在中间切开。';
+  } else {
+    noteEl.textContent = extraKeys.length
+      ? '被截断：丢掉了 ' + extraKeys.map(function (p) { return p.key; }).join('、') + '。'
+      : '这次没被切断，但只是「恰好」没有 & 而已。';
+    noteBox.className = 'note badnote';
+    noteBox.innerHTML = extraKeys.length
+      ? '支付服务按 <code>&amp;</code> 切参数，回跳地址在中途被切开：<code>redirect</code> 只剩前半段，' +
+        extraKeys.map(function (p) { return '<code>' + escapeHtml(p.key) + '</code>'; }).join('、') +
+        ' 变成了网关自己的参数。用户回来时参数已经丢了。'
+      : '这次侥幸没被切断。但只要回跳地址以后加上带 <code>&amp;</code> 的参数，这段代码立刻出错——「现在恰好没问题」不能当成理由。';
+  }
+}
+
+function safeDecode(s) {
+  try { return decodeURIComponent(s); } catch (e) { return s; }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ---------- 2. 结果信不信 ---------- */
+var tf = { logs: [], orderState: 1 };
+
+function tfLog(text, cls) {
+  tf.logs.unshift({ text: text, cls: cls || '' });
+  if (tf.logs.length > 12) tf.logs.pop();
+}
+
+function fakeSuccess() {
+  var input = document.getElementById('tf-url');
+  input.value = input.value.replace(/payResult=[^&]*/, 'payResult=true');
+  tfLog('手动把地址栏改成 payResult=true → 前端立刻显示「支付成功」', 'bad');
+  renderTruth();
+}
+
+function notifyArrived() {
+  tf.orderState = 2;
+  tfLog('支付宝 → 你的服务器：异步通知送达，验签通过，订单改为已支付', 'ok');
+  renderTruth();
+}
+
+function resetTruth() {
+  document.getElementById('tf-url').value = 'http://127.0.0.1:5173/paycallback?payResult=false&orderId=978001';
+  tf.orderState = 1;
+  tf.logs = [];
+  renderTruth();
+}
+
+function renderTruth() {
+  var raw = document.getElementById('tf-url').value;
+  var m = raw.match(/payResult=([^&]*)/);
+  var payResult = m ? safeDecode(m[1]) : '';
+  var optimistic = payResult === 'true';
+
+  document.getElementById('tf-icon').textContent = optimistic ? '✓' : '✕';
+  document.getElementById('tf-tit').textContent = optimistic ? '支付成功' : '支付失败';
+  document.getElementById('tf-sub').textContent = 'payResult = ' + (m ? m[1] : '（缺失）');
+
+  var paid = tf.orderState === 2;
+  document.getElementById('tf-srv-icon').textContent = paid ? '✓' : '⏳';
+  document.getElementById('tf-srv-tit').textContent = paid ? '已支付' : '待付款';
+  document.getElementById('tf-srv-sub').textContent = 'orderState = ' + tf.orderState;
+
+  var logBox = document.getElementById('tf-log');
+  logBox.innerHTML = tf.logs.length
+    ? tf.logs.map(function (r) { return '<div class="log-row ' + r.cls + '">' + r.text + '</div>'; }).join('')
+    : '<div class="log-empty">还没有操作。</div>';
+
+  var note = document.getElementById('tf-note');
+  if (optimistic && !paid) {
+    note.className = 'note badnote';
+    note.innerHTML = '前端说成功，账本说没付——这一刻页面在说谎。真实项目里，下一步要么查一次订单状态把它纠正过来，要么至少显示「确认中」，绝不能直接钉死「支付成功」。';
+  } else if (!optimistic && paid) {
+    note.className = 'note';
+    note.innerHTML = '前端说失败，账本说已付——这就是「回跳丢了但钱已经到了」的情况。所以结果页一定要再用订单状态复核一次，否则用户会去重复付款。';
+  } else if (optimistic && paid) {
+    note.className = 'note goodnote';
+    note.innerHTML = '两边一致，这才是可以放心展示的状态。注意它是「复核之后」的一致，不是「因为地址栏这么写」的一致。';
+  } else {
+    note.className = 'note';
+    note.innerHTML = '两边都说没付，属于正常待付款状态。地址栏只能做乐观渲染，最终以右栏为准。';
+  }
+}
+
+/* ---------- 3. 倒计时 ---------- */
+var tm = {
+  total: 60,
+  running: false,
+  slow: false,
+  startAt: 0,
+  elapsed: 0,
+  timers: [],          // { mode: 'count' | 'diff', ticks: 0 }
+  loop: null,
+  logs: []
+};
+
+function tmLog(text, cls) {
+  tm.logs.unshift({ text: text, cls: cls || '' });
+  if (tm.logs.length > 12) tm.logs.pop();
+}
+
+function tmTick() {
+  if (!tm.running) return;
+  tm.elapsed = Math.floor((Date.now() - tm.startAt) / 1000);
+  tm.timers.forEach(function (t) { t.ticks += 1; });
+  if (tm.elapsed >= tm.total) tmStopAll();
+  renderTimer();
+}
+
+function tmStart(skipClear) {
+  if (skipClear) {
+    tmLog('又调了一次 start()，但没 clearInterval —— 旧的定时器还在跑', 'bad');
+  } else {
+    if (tm.timers.length) tmLog('先 clearInterval 掉旧定时器，再重新开始', 'ok');
+    tm.timers = [];
+  }
+  if (!tm.running) {
+    tm.running = true;
+    tm.startAt = Date.now();
+    tm.elapsed = 0;
+  }
+  /* 每个 start 都追加一对定时器：一个计数式，一个差值式 */
+  tm.timers.push({ mode: 'count', ticks: 0 });
+  tm.timers.push({ mode: 'diff', ticks: 0 });
+  if (!tm.loop) tm.loop = setInterval(tmTick, tm.slow ? 3000 : 1000);
+
+  if (!skipClear) tmLog('倒计时开始：60 秒，两个算法各起一个定时器', '');
+  renderTimer();
+}
+
+function tmToggleSlow() {
+  tm.slow = !tm.slow;
+  if (tm.loop) { clearInterval(tm.loop); tm.loop = null; }
+  if (tm.running) tm.loop = setInterval(tmTick, tm.slow ? 3000 : 1000);
+  document.getElementById('tm-slow').textContent = tm.slow ? '恢复正常节奏' : '模拟后台节流';
+  tmLog(tm.slow ? '切到后台：浏览器把定时器节流到每 3 秒才回调一次' : '回到前台：回调恢复为每秒一次', tm.slow ? 'bad' : 'ok');
+  renderTimer();
+}
+
+function tmStopAll() {
+  tm.running = false;
+  if (tm.loop) { clearInterval(tm.loop); tm.loop = null; }
+}
+
+function tmReset() {
+  tmStopAll();
+  tm.timers = [];
+  tm.elapsed = 0;
+  tm.slow = false;
+  tm.logs = [];
+  document.getElementById('tm-slow').textContent = '模拟后台节流';
+  renderTimer();
+}
+
+function renderTimer() {
+  var countTimer = tm.timers.filter(function (t) { return t.mode === 'count'; })[0];
+  var diffTimer = tm.timers.filter(function (t) { return t.mode === 'diff'; })[0];
+
+  var countRemain = countTimer ? Math.max(0, tm.total - countTimer.ticks) : tm.total;
+  var diffRemain = diffTimer ? Math.max(0, tm.total - tm.elapsed) : tm.total;
+
+  var cEl = document.getElementById('tm-count');
+  var dEl = document.getElementById('tm-diff');
+  cEl.textContent = countRemain + 's';
+  dEl.textContent = diffRemain + 's';
+  cEl.className = 'val ' + (countRemain > diffRemain + 1 ? 'bad' : '');
+  dEl.className = 'val good';
+
+  document.getElementById('tm-elapsed').textContent = tm.elapsed + 's';
+  document.getElementById('tm-timers').textContent = String(tm.timers.length);
+  document.getElementById('tm-visible').textContent = tm.slow ? '否（被节流）' : '是';
+
+  var logBox = document.getElementById('tm-log');
+  logBox.innerHTML = tm.logs.length
+    ? tm.logs.map(function (r) { return '<div class="log-row ' + r.cls + '">' + r.text + '</div>'; }).join('')
+    : '<div class="log-empty">还没有操作。</div>';
+
+  var note = document.getElementById('tm-note');
+  if (diffRemain === 0 && countRemain === 0) {
+    note.className = 'note goodnote';
+    note.innerHTML = '两种都到 0 了。但请回头看「活跃定时器」——如果刚才连点了「重复开始」，那一列数字是几个定时器一起减出来的，看起来更快，其实只是叠了。';
+  } else if (countRemain > diffRemain + 1) {
+    note.className = 'note badnote';
+    note.innerHTML = '计数式（左）比差值式（右）多出 ' + (countRemain - diffRemain) + ' 秒：它把「回调迟到了」误当成「时间没走」。真实节流下，一天可能差出几十分钟。';
+  } else {
+    note.className = 'note';
+    note.innerHTML = '两种写法用的是同一段 60 秒、同一批回调。差别只在于：一个相信「减了多少次」，一个相信「现在几点」。';
+  }
+}
+
+/* ---------- 4. 速查卡 ---------- */
+var CARDS = [
+  { t: '订单号放 URL', p: '用 <code>query</code> 不用 <code>params</code>，否则刷新即白屏。' },
+  { t: '接口只读', p: '<code>GET /member/order/:id</code>，刷多少次结果都一样；支付页从不创建订单。' },
+  { t: '初始值给空对象', p: '<code>ref({})</code> 配合 <code>payInfo.payMoney?.toFixed(2)</code>，首屏才不报错。' },
+  { t: '金额只显示', p: '前端重算金额等于把定价权交给用户，一律用服务端的 <code>payMoney</code>。' },
+  { t: 'URL 里套 URL 要编码', p: '<code>redirect</code>、<code>returnUrl</code> 必须过 <code>encodeURIComponent</code>，否则被 <code>&amp;</code> 切断。' },
+  { t: '回跳参数不可信', p: '<code>payResult</code> 是字符串也是可编辑的，必须用服务端 <code>orderState</code> 复核。' },
+  { t: '定时器三件套', p: '开始前 clear 旧的、到 0 停、<code>onUnmounted</code> 清掉。少一样都是不报错的 bug。' },
+  { t: '别数秒，算差值', p: '用 <code>expireAt - Date.now()</code> 重算，浏览器的后台节流就影响不到你。' }
+];
+
+function renderCards() {
+  document.getElementById('card-grid').innerHTML = CARDS.map(function (c, i) {
+    return '<div class="qc"><h3>' + (i + 1) + '. ' + c.t + '</h3><p>' + c.p + '</p></div>';
+  }).join('');
+}
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  renderLink();
+  renderTruth();
+  renderTimer();
+  renderCards();
+});
+</script>
+</body>
+</html>

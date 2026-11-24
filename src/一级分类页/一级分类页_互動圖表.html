@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一级分类页 · 互动图表</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 14px; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px;
+    font-size: 13px; color: #475569; cursor: pointer; transition: all .15s;
+  }
+  .tab-btn:hover { border-color: #94a3b8; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .panel { display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel .hint { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid #3b82f6; background: #3b82f6;
+    color: #fff; font-size: 13px; cursor: pointer;
+  }
+  .btn.ghost { background: #fff; color: #3b82f6; }
+  .btn.plain { background: #fff; color: #475569; border-color: #cbd5e1; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .row .lbl { font-size: 12px; color: #64748b; }
+  .seg { display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+  .seg button {
+    border: 0; background: #fff; padding: 6px 12px; font-size: 12px; color: #475569; cursor: pointer;
+    border-right: 1px solid #e2e8f0;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: #3b82f6; color: #fff; }
+  .urlbox {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+    background: #0f172a; color: #e2e8f0; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px;
+    overflow-x: auto; white-space: nowrap;
+  }
+  .urlbox b { color: #93c5fd; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { flex: 1; min-width: 120px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; }
+  .stat span { display: block; font-size: 11px; color: #64748b; }
+  .stat b { font-size: 17px; color: #0f172a; }
+  .stat b.bad { color: #ef4444; }
+  .stat b.good { color: #22c55e; }
+  .view {
+    border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;
+    min-height: 92px;
+  }
+  .view .crumb { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+  .view .title { font-size: 16px; font-weight: 600; }
+  .view .sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .flash { animation: flash .5s ease; }
+  @keyframes flash { from { background: #dbeafe; } to { background: #f8fafc; } }
+  .bc-result { font-size: 15px; padding: 10px 0; }
+  .bc-result .sep { color: #cbd5e1; margin: 0 6px; }
+  .bc-result a { color: #3b82f6; text-decoration: none; cursor: pointer; }
+  .bc-result a:hover { text-decoration: underline; }
+  .bc-result .cur { color: #0f172a; font-weight: 600; }
+  .bc-result .tag { font-size: 10px; background: #dcfce7; color: #15803d; padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
+  .toast { font-size: 12px; color: #b45309; background: #fef3c7; border-radius: 6px; padding: 6px 10px; margin-top: 10px; min-height: 32px; }
+  .track { position: relative; height: 28px; background: #f1f5f9; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+  .track .label { position: absolute; left: 8px; top: 4px; font-size: 12px; color: #475569; z-index: 1; }
+  .track .blk { position: absolute; top: 6px; height: 16px; border-radius: 4px; opacity: .85; transition: width .2s linear; }
+  .track .blk.a { background: #3b82f6; }
+  .track .blk.b { background: #f59e0b; }
+  .track .blk.c { background: #22c55e; }
+  .track .blk.void { background: #cbd5e1; }
+  .verdict { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .verdict .box { flex: 1; min-width: 160px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #f8fafc; }
+  .verdict .box span { font-size: 11px; color: #64748b; display: block; }
+  .verdict .box b { font-size: 18px; }
+  .verdict .box b.bad { color: #ef4444; }
+  .verdict .box b.good { color: #22c55e; }
+  .code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px;
+    background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; margin-top: 10px;
+    white-space: pre-wrap; overflow-x: auto;
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .qc { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .qc h3 { margin: 0 0 6px; font-size: 13px; color: #3b82f6; }
+  .qc p { margin: 0; font-size: 12px; color: #475569; }
+  .qc code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  .note { margin-top: 12px; padding: 10px 12px; background: #f1f5f9; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; font-size: 12px; color: #475569; }
+</style>
+</head>
+<body>
+
+<h1>一级分类页 · 互动图表</h1>
+<p class="lead">四个实验：参数变化时组件到底重不重建、面包屑的层级与可点性、乱序响应的两种解法，以及一页速查。</p>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('reuse', this)">1. 复用还是重建</button>
+  <button class="tab-btn" onclick="switchTab('bread', this)">2. 面包屑构建器</button>
+  <button class="tab-btn" onclick="switchTab('race', this)">3. 乱序响应</button>
+  <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+</div>
+
+<!-- ========== 1. 复用 ========== -->
+<div class="panel active" id="panel-reuse">
+  <h2>从 /category/1 切到 /category/2，组件会重建吗</h2>
+  <p class="hint">先选一种策略，再连续点下面的分类按钮。注意「组件实例编号」与「setup 执行次数」有没有变。</p>
+
+  <div class="row">
+    <span class="lbl">策略</span>
+    <div class="seg" id="seg-strategy">
+      <button class="on" onclick="setStrategy('mounted', this)">只写 onMounted</button>
+      <button onclick="setStrategy('watch', this)">watch 参数</button>
+      <button onclick="setStrategy('rebuild', this)">RouterView :key</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="lbl">点击分类</span>
+    <button class="btn sm plain" onclick="goCategory('手机', 1005000)">手机</button>
+    <button class="btn sm plain" onclick="goCategory('电脑', 1005001)">电脑</button>
+    <button class="btn sm plain" onclick="goCategory('家电', 1005002)">家电</button>
+    <button class="btn sm plain" onclick="resetReuse()">重置</button>
+  </div>
+
+  <div class="urlbox" id="reuse-url">地址栏：<b>/category/1005000</b></div>
+
+  <div class="stats">
+    <div class="stat"><span>组件实例编号</span><b id="r-inst">#1</b></div>
+    <div class="stat"><span>setup 执行次数</span><b id="r-setup">1</b></div>
+    <div class="stat"><span>请求次数</span><b id="r-req">1</b></div>
+    <div class="stat"><span>页面显示</span><b id="r-shown">手机</b></div>
+  </div>
+
+  <div class="view" id="reuse-view">
+    <div class="crumb">首页 / <span id="r-crumb">手机</span></div>
+    <div class="title" id="r-title">手机分类</div>
+    <div class="sub" id="r-sub">商品列表已加载</div>
+  </div>
+
+  <div class="note" id="reuse-note">当前策略：只写 onMounted。切换分类时组件不会重建，所以 onMounted 不会再执行。</div>
+</div>
+
+<!-- ========== 2. 面包屑 ========== -->
+<div class="panel" id="panel-bread">
+  <h2>哪一层能点，哪一层不能</h2>
+  <p class="hint">拖动层级数看结构变化。点击蓝色层级会提示跳转；最后一层是当前位置，不可点。</p>
+
+  <div class="row">
+    <span class="lbl">层级数</span>
+    <input type="range" id="bc-depth" min="1" max="4" value="3" oninput="renderBread(this.value)" style="flex:1;min-width:160px">
+    <b id="bc-depth-val" style="color:#3b82f6">3</b>
+  </div>
+
+  <div class="bc-result" id="bc-preview"></div>
+  <div class="toast" id="bc-toast">等待点击……</div>
+
+  <div class="code" id="bc-code"></div>
+  <div class="note">最后一层用普通元素而不是链接，对应 ARIA 的 <code>aria-current="page"</code>：指向当前页的链接对读屏用户只是噪音。</div>
+</div>
+
+<!-- ========== 3. 竞态 ========== -->
+<div class="panel" id="panel-race">
+  <h2>连点三个分类，最后该显示谁</h2>
+  <p class="hint">点「依次切换」：A 最慢（1200ms）、B 中等（800ms）、C 最快（300ms），间隔 100ms 依次发出。</p>
+
+  <div class="row">
+    <button class="btn" onclick="runRace()" id="race-btn">依次切换 A → B → C</button>
+    <button class="btn ghost" onclick="resetRace()">重置</button>
+    <label style="font-size:12px;color:#475569">
+      <input type="checkbox" id="race-guard" checked onchange="showRaceVerdict()"> 序号比对（只认最后一次）
+    </label>
+  </div>
+
+  <div id="race-tracks">
+    <div class="track" id="track-a"><span class="label">请求 A：手机（1200ms）</span></div>
+    <div class="track" id="track-b"><span class="label">请求 B：电脑（800ms）</span></div>
+    <div class="track" id="track-c"><span class="label">请求 C：家电（300ms）</span></div>
+  </div>
+
+  <div class="verdict">
+    <div class="box"><span>最后停在的分类</span><b>家电</b></div>
+    <div class="box"><span>列表实际显示</span><b id="race-shown">—</b></div>
+  </div>
+
+  <div class="note" id="race-note">没有序号比对时，最后完成的请求会覆盖前面的结果——先发的最慢，于是它赢了。</div>
+
+  <div class="code" id="race-code">let seq = 0
+async function load(id, name) {
+  const cur = ++seq
+  const data = await request(id)   // 耗时不同
+  if (cur !== seq) return           // 已经被更新的请求取代
+  list.value = data
+}</div>
+</div>
+
+<!-- ========== 4. 速查卡 ========== -->
+<div class="panel" id="panel-cards">
+  <h2>一级分类页速查卡</h2>
+  <p class="hint">八张卡覆盖本章所有容易写错的点。</p>
+  <div class="cards" id="card-grid"></div>
+</div>
+
+<script>
+/* ---------- tab ---------- */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'bread') renderBread(document.getElementById('bc-depth').value);
+  if (name === 'cards') renderCards();
+}
+
+/* ---------- 1. 复用 ---------- */
+var strategy = 'mounted';
+var state = { inst: 1, setups: 1, req: 1, shown: '手机', current: '手机' };
+
+function setStrategy(s, btn) {
+  strategy = s;
+  document.querySelectorAll('#seg-strategy button').forEach(function (b) { b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  resetReuse();
+  var note = document.getElementById('reuse-note');
+  if (s === 'mounted') {
+    note.textContent = '当前策略：只写 onMounted。切换分类时组件不会重建，所以 onMounted 不会再执行。';
+  } else if (s === 'watch') {
+    note.textContent = '当前策略：watch 参数并 immediate。参数一变就重新取数，实例编号不变、setup 只执行一次。';
+  } else {
+    note.textContent = '当前策略：RouterView 绑定 key。每次切换整个子树重建，setup 重新执行，代价是外壳状态也一起丢失。';
+  }
+}
+
+function goCategory(name, id) {
+  state.current = name;
+  document.getElementById('reuse-url').innerHTML = '地址栏：<b>/category/' + id + '</b>';
+
+  if (strategy === 'mounted') {
+    /* 组件复用，onMounted 不再执行 → 页面不动 */
+    flashView();
+  } else if (strategy === 'watch') {
+    state.req += 1;
+    state.shown = name;
+  } else {
+    state.inst += 1;
+    state.setups += 1;
+    state.req += 1;
+    state.shown = name;
+    flashView();
+  }
+  renderReuse();
+}
+
+function flashView() {
+  var v = document.getElementById('reuse-view');
+  v.classList.remove('flash');
+  void v.offsetWidth;
+  v.classList.add('flash');
+}
+
+function renderReuse() {
+  document.getElementById('r-inst').textContent = '#' + state.inst;
+  document.getElementById('r-setup').textContent = state.setups;
+  document.getElementById('r-req').textContent = state.req;
+  document.getElementById('r-shown').textContent = state.shown;
+
+  var mismatch = state.current !== state.shown;
+  var shownEl = document.getElementById('r-shown');
+  shownEl.className = mismatch ? 'bad' : 'good';
+
+  document.getElementById('r-crumb').textContent = state.shown;
+  document.getElementById('r-title').textContent = state.shown + '分类';
+  document.getElementById('r-sub').textContent = mismatch
+    ? '地址已经是「' + state.current + '」，页面还停在「' + state.shown + '」'
+    : '商品列表已加载';
+
+  var note = document.getElementById('reuse-note');
+  if (mismatch) {
+    note.textContent = '页面和地址对不上了：组件被复用，onMounted 没有再次执行，请求也没发。这就是本章第六节的坑。';
+  }
+}
+
+function resetReuse() {
+  state = { inst: 1, setups: 1, req: 1, shown: '手机', current: '手机' };
+  document.getElementById('reuse-url').innerHTML = '地址栏：<b>/category/1005000</b>';
+  renderReuse();
+  document.getElementById('r-shown').className = 'good';
+  document.getElementById('r-sub').textContent = '商品列表已加载';
+}
+
+/* ---------- 2. 面包屑 ---------- */
+var LEVELS = [
+  { name: '首页', to: '/' },
+  { name: '手机数码', to: '/category/1005000' },
+  { name: '手机通讯', to: '/category/1005001' },
+  { name: '5G 手机', to: null },
+];
+
+function renderBread(depth) {
+  depth = Number(depth);
+  document.getElementById('bc-depth-val').textContent = depth;
+  var levels = LEVELS.slice(0, depth);
+  levels[levels.length - 1].to = null;
+
+  var html = '';
+  levels.forEach(function (lv, i) {
+    if (i > 0) html += '<span class="sep">/</span>';
+    if (lv.to) {
+      html += '<a onclick="bcClick(\'' + lv.name + '\',\'' + lv.to + '\')">' + lv.name + '</a>';
+    } else {
+      html += '<span class="cur">' + lv.name + '</span><span class="tag">当前</span>';
+    }
+  });
+  document.getElementById('bc-preview').innerHTML = html;
+
+  var code = '<XtxBread>\n';
+  levels.forEach(function (lv) {
+    if (lv.to) code += '  <XtxBreadItem to="' + lv.to + '">' + lv.name + '</XtxBreadItem>\n';
+    else code += '  <XtxBreadItem>' + lv.name + '</XtxBreadItem>\n';
+  });
+  code += '</XtxBread>';
+  document.getElementById('bc-code').textContent = code;
+}
+
+function bcClick(name, to) {
+  document.getElementById('bc-toast').textContent = '点击「' + name + '」→ 跳转到 ' + to + '（最后一层没有这个反应，因为它不可点）';
+}
+
+/* ---------- 3. 竞态 ---------- */
+var RACE = [
+  { key: 'a', name: '手机', ms: 1200, color: '#3b82f6' },
+  { key: 'b', name: '电脑', ms: 800, color: '#f59e0b' },
+  { key: 'c', name: '家电', ms: 300, color: '#22c55e' },
+];
+var raceTimers = [];
+var raceSeq = 0;
+
+function clearRace() {
+  raceTimers.forEach(function (t) { clearTimeout(t); });
+  raceTimers = [];
+  RACE.forEach(function (r) {
+    var track = document.getElementById('track-' + r.key);
+    Array.prototype.slice.call(track.querySelectorAll('.blk')).forEach(function (b) { b.remove(); });
+  });
+}
+
+function resetRace() {
+  clearRace();
+  raceSeq = 0;
+  document.getElementById('race-shown').textContent = '—';
+  document.getElementById('race-shown').className = '';
+  document.getElementById('race-note').textContent = '没有序号比对时，最后完成的请求会覆盖前面的结果——先发的最慢，于是它赢了。';
+  document.getElementById('race-btn').disabled = false;
+}
+
+function runRace() {
+  clearRace();
+  raceSeq = 0;
+  document.getElementById('race-btn').disabled = true;
+  document.getElementById('race-shown').textContent = '加载中…';
+  document.getElementById('race-shown').className = '';
+
+  var guard = document.getElementById('race-guard').checked;
+  var finished = [];
+
+  RACE.forEach(function (r, idx) {
+    var startDelay = idx * 100;
+    var t = setTimeout(function () {
+      var track = document.getElementById('track-' + r.key);
+      var blk = document.createElement('div');
+      blk.className = 'blk ' + r.key;
+      blk.style.left = '110px';
+      blk.style.width = '0px';
+      track.appendChild(blk);
+
+      var mySeq = ++raceSeq;
+
+      var t2 = setTimeout(function () {
+        blk.style.width = 'calc(100% - 120px)';
+        finished.push(r.name);
+        var shown = document.getElementById('race-shown');
+        if (guard) {
+          if (mySeq === raceSeq) {
+            shown.textContent = r.name;
+            shown.className = 'good';
+          }
+        } else {
+          shown.textContent = r.name;
+          shown.className = 'bad';
+        }
+        if (finished.length === RACE.length) showRaceVerdict(guard);
+      }, r.ms);
+      raceTimers.push(t2);
+    }, startDelay);
+    raceTimers.push(t);
+  });
+}
+
+function showRaceVerdict(guard) {
+  var shown = document.getElementById('race-shown');
+  var note = document.getElementById('race-note');
+  if (typeof guard === 'undefined') guard = document.getElementById('race-guard').checked;
+
+  if (shown.textContent === '—') {
+    note.textContent = guard
+      ? '已开启序号比对。点「依次切换」，看旧请求的结果如何被丢弃。'
+      : '已关闭序号比对。点「依次切换」，看先发的慢请求如何覆盖最新结果。';
+    return;
+  }
+
+  if (guard) {
+    shown.textContent = '家电';
+    shown.className = 'good';
+    note.textContent = '序号比对：A、B 返回时序号已过期，直接被丢弃，只有 C 的结果被写入。页面与地址一致。';
+  } else {
+    shown.textContent = '手机';
+    shown.className = 'bad';
+    note.textContent = '没有序号比对：C 先回来（写家电），B 再回来（写电脑），A 最后回来（写手机）。地址停在「家电」，页面却显示「手机」。';
+  }
+}
+
+function renderCards() {
+  var grid = document.getElementById('card-grid');
+  if (!grid) return;
+  var cards = [
+    ['参数变，组件不重建', '同一路由记录只有参数不同时，实例被复用，<code>onMounted</code> 不会再执行。'],
+    ['最稳的修法', '<code>watch(() =&gt; route.params.id, fn, { immediate: true })</code>，一处覆盖首次与后续。'],
+    ['别写两遍', '既写 <code>onMounted</code> 又写带 <code>immediate</code> 的 watch，首次会请求两次。'],
+    ['key 的范围', '加在 RouterView 上会重建整棵子树，外壳状态一起丢失。'],
+    ['面包屑最后一层', '不可点，用 <code>span</code> + <code>aria-current="page"</code>。'],
+    ['高度别写死', 'Banner 复用时把 <code>site</code> 与 <code>height</code> 都交给调用方。'],
+    ['key 用 id', '用 <code>index</code> 当 key，切分类时图片会错位闪一帧。'],
+    ['竞态两条路', '序号比对（丢弃旧结果）或 <code>AbortController</code>（取消旧请求）。'],
+  ];
+  grid.innerHTML = cards.map(function (c) {
+    return '<div class="qc"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
+  }).join('');
+}
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  renderReuse();
+  renderBread(3);
+  resetRace();
+  renderCards();
+});
+</script>
+</body>
+</html>

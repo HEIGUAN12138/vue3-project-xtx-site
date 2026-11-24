@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二级分类页 · 互动图表</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 14px; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px;
+    font-size: 13px; color: #475569; cursor: pointer; transition: all .15s;
+  }
+  .tab-btn:hover { border-color: #94a3b8; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .panel { display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel .hint { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid #3b82f6; background: #3b82f6;
+    color: #fff; font-size: 13px; cursor: pointer;
+  }
+  .btn.ghost { background: #fff; color: #3b82f6; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .lbl { font-size: 12px; color: #64748b; }
+  .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .checks label {
+    font-size: 12px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 7px 10px; cursor: pointer; display: flex; gap: 6px; align-items: center;
+  }
+  .checks label.no { opacity: .6; cursor: not-allowed; }
+  .urlbox {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+    background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px;
+    overflow-x: auto; white-space: nowrap;
+  }
+  .urlbox b { color: #93c5fd; font-weight: 400; }
+  .verdicts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .vbox { flex: 1; min-width: 150px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #f8fafc; }
+  .vbox span { font-size: 11px; color: #64748b; display: block; }
+  .vbox b { font-size: 15px; }
+  .vbox b.bad { color: #ef4444; }
+  .vbox b.good { color: #22c55e; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
+  .col { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .col h3 { font-size: 13px; margin: 0 0 8px; }
+  .col h3.bad { color: #b91c1c; }
+  .col h3.good { color: #15803d; }
+  .goods { max-height: 168px; overflow: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .g { height: 46px; border-radius: 6px; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; }
+  .col .count { font-size: 12px; color: #475569; margin-top: 8px; }
+  .col .count b { font-size: 16px; }
+  .col .count b.bad { color: #ef4444; }
+  .col .count b.good { color: #22c55e; }
+  .feed {
+    height: 210px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 10px;
+    background: #f8fafc; padding: 8px; margin-bottom: 12px;
+  }
+  .feed .item {
+    height: 30px; margin-bottom: 6px; border-radius: 6px; background: #fff; border: 1px solid #e2e8f0;
+    display: flex; align-items: center; padding: 0 10px; font-size: 11px; color: #475569;
+  }
+  .feed .sentinel {
+    height: 24px; border: 1px dashed #94a3b8; border-radius: 6px; color: #94a3b8;
+    font-size: 11px; display: flex; align-items: center; justify-content: center;
+  }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .stat { flex: 1; min-width: 108px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; }
+  .stat span { display: block; font-size: 11px; color: #64748b; }
+  .stat b { font-size: 17px; }
+  .stat b.bad { color: #ef4444; }
+  .stat b.good { color: #22c55e; }
+  .note { margin-top: 12px; padding: 10px 12px; background: #f1f5f9; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; font-size: 12px; color: #475569; }
+  .code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px;
+    background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; margin-top: 10px;
+    white-space: pre-wrap; overflow-x: auto;
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .qc { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .qc h3 { margin: 0 0 6px; font-size: 13px; color: #3b82f6; }
+  .qc p { margin: 0; font-size: 12px; color: #475569; }
+  .qc code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>二级分类页 · 互动图表</h1>
+<p class="lead">四个实验：状态该放路径还是 query、筛选该在前端还是后端、无限加载的三重保护，以及一页速查。</p>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('place', this)">1. 状态放哪</button>
+  <button class="tab-btn" onclick="switchTab('filter', this)">2. 前端过滤 vs 后端查询</button>
+  <button class="tab-btn" onclick="switchTab('infinite', this)">3. 无限加载的三重保护</button>
+  <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+</div>
+
+<!-- ========== 1. 状态放哪 ========== -->
+<div class="panel active" id="panel-place">
+  <h2>哪些状态值得写进地址栏</h2>
+  <p class="hint">勾选要放进 URL 的状态，看生成的链接与「刷新 / 分享」之后能不能还原。</p>
+
+  <div class="checks" id="place-checks">
+    <label class="no"><input type="checkbox" checked disabled> 分类 id（必选）</label>
+    <label><input type="checkbox" checked onchange="renderPlace()" data-k="page"> 页码</label>
+    <label><input type="checkbox" checked onchange="renderPlace()" data-k="sort"> 排序</label>
+    <label><input type="checkbox" checked onchange="renderPlace()" data-k="brand"> 品牌筛选</label>
+    <label><input type="checkbox" onchange="renderPlace()" data-k="stock"> 仅看有货</label>
+    <label><input type="checkbox" onchange="renderPlace()" data-k="drawer"> 侧边栏展开</label>
+    <label><input type="checkbox" onchange="renderPlace()" data-k="hover"> 鼠标悬停项</label>
+  </div>
+
+  <div class="urlbox" id="place-url"></div>
+
+  <div class="verdicts">
+    <div class="vbox"><span>刷新后能否还原</span><b id="v-refresh">—</b></div>
+    <div class="vbox"><span>分享给别人能否还原</span><b id="v-share">—</b></div>
+    <div class="vbox"><span>链接可读性</span><b id="v-read">—</b></div>
+  </div>
+
+  <div class="note" id="place-note">页码、排序、筛选都属于「可分享状态」，写进 query 才完整；侧边栏与悬停属于纯 UI 状态，留在内存即可。</div>
+</div>
+
+<!-- ========== 2. 筛选 ========== -->
+<div class="panel" id="panel-filter">
+  <h2>后端有 60 件，你手里只有 20 件</h2>
+  <p class="hint">先点「取第 1 页」（20 件），再选一个品牌，对比前端过滤与后端查询的结果。</p>
+
+  <div class="row">
+    <button class="btn ghost" onclick="takePage()">取第 1 页（20 件）</button>
+    <span class="lbl">品牌</span>
+    <button class="btn ghost" onclick="chooseBrand('A')">A</button>
+    <button class="btn ghost" onclick="chooseBrand('B')">B</button>
+    <button class="btn ghost" onclick="chooseBrand('C')">C</button>
+  </div>
+
+  <div class="cmp">
+    <div class="col">
+      <h3 class="bad">前端 filter 已经取到的 20 件</h3>
+      <div class="goods" id="front-list"></div>
+      <div class="count">命中 <b class="bad" id="front-count">0</b> 件</div>
+    </div>
+    <div class="col">
+      <h3 class="good">把品牌作为参数问后端</h3>
+      <div class="goods" id="back-list"></div>
+      <div class="count">命中 <b class="good" id="back-count">0</b> 件</div>
+    </div>
+  </div>
+
+  <div class="note" id="filter-note">后端共有 60 件，第 1 页恰好全是 A 品牌。选 B 时，前端在手里这 20 件里翻，结果是 0。</div>
+</div>
+
+<!-- ========== 3. 无限加载 ========== -->
+<div class="panel" id="panel-infinite">
+  <h2>滚到底 4 秒，会发生几次请求</h2>
+  <p class="hint">三种写法各跑一次。共 57 件、每页 20 件，正常情况下应该只请求 3 次。</p>
+
+  <div class="row">
+    <button class="btn" onclick="runInfinite('none')" id="ib-none">没写 hasMore</button>
+    <button class="btn ghost" onclick="runInfinite('noloading')" id="ib-noloading">没写 loading</button>
+    <button class="btn ghost" onclick="runInfinite('both')" id="ib-both">两个都写了</button>
+    <button class="btn ghost" onclick="resetInfinite()">重置</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>触发次数</span><b id="i-attempt">0</b></div>
+    <div class="stat"><span>实际请求</span><b id="i-req">0</b></div>
+    <div class="stat"><span>列表条数</span><b id="i-len">0</b></div>
+    <div class="stat"><span>hasMore</span><b id="i-more">true</b></div>
+  </div>
+
+  <div class="feed" id="feed">
+    <div class="sentinel" id="sentinel">哨兵：滚到这里就加载下一页</div>
+  </div>
+
+  <div class="note" id="infinite-note">正常情况下：第 1 页 20 条、第 2 页 20 条、第 3 页 17 条，共 3 次请求，然后 hasMore 变 false。</div>
+
+  <div class="code">async function loadMore() {
+  if (loading.value) return      // 保护一：别重复发
+  if (!hasMore.value) return     // 保护二：到底了别再要
+  loading.value = true
+  try {
+    const r = await api({ page: page.value })
+    list.value.push(...r.items)
+    hasMore.value = list.value.length &lt; r.total
+    if (hasMore.value) page.value++
+  } finally { loading.value = false }
+}</div>
+</div>
+
+<!-- ========== 4. 速查卡 ========== -->
+<div class="panel" id="panel-cards">
+  <h2>二级分类页速查卡</h2>
+  <p class="hint">八张卡覆盖本章所有容易写错的点。</p>
+  <div class="cards" id="card-grid"></div>
+</div>
+
+<script>
+/* ---------- tab ---------- */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'cards') renderCards();
+  if (name === 'place') renderPlace();
+}
+
+/* ---------- 1. 状态放哪 ---------- */
+function renderPlace() {
+  var keys = {};
+  document.querySelectorAll('#place-checks input[data-k]').forEach(function (cb) {
+    keys[cb.dataset.k] = cb.checked;
+  });
+
+  var qs = [];
+  if (keys.page) qs.push('page=3');
+  if (keys.sort) qs.push('sort=price_asc');
+  if (keys.brand) qs.push('brand=2');
+  if (keys.stock) qs.push('stock=1');
+  var url = '/category/sub/1005001' + (qs.length ? '?' + qs.join('&') : '');
+  document.getElementById('place-url').innerHTML = '地址栏：<b>' + url + '</b>';
+
+  var coreShareable = keys.page && keys.sort && keys.brand;
+  var uiLeak = keys.drawer || keys.hover;
+
+  var refresh = document.getElementById('v-refresh');
+  refresh.textContent = coreShareable ? '能（核心条件在地址里）' : '部分丢失';
+  refresh.className = coreShareable ? 'good' : 'bad';
+
+  var share = document.getElementById('v-share');
+  share.textContent = coreShareable ? '能还原筛选视图' : '对方看到未筛选的列表';
+  share.className = coreShareable ? 'good' : 'bad';
+
+  var read = document.getElementById('v-read');
+  if (uiLeak) {
+    read.textContent = '变脏（混入了 UI 状态）';
+    read.className = 'bad';
+  } else if (qs.length === 0) {
+    read.textContent = '很短，但信息也少';
+    read.className = '';
+  } else {
+    read.textContent = '清晰可读';
+    read.className = 'good';
+  }
+
+  var note = document.getElementById('place-note');
+  if (uiLeak) {
+    note.textContent = '侧边栏展开、鼠标悬停属于纯 UI 状态，写进地址只会让链接变脏，复制给别人也没有意义。';
+  } else if (!coreShareable) {
+    note.textContent = '少了筛选或排序，刷新后会退回到默认列表，把链接发给朋友也还原不出你看到的视图。';
+  } else {
+    note.textContent = '这是完整写法：路径标识「哪个分类」，query 标识「怎么挑」，两者都可分享、可刷新还原。';
+  }
+}
+
+/* ---------- 2. 筛选 ---------- */
+var ALL = [];
+(function () {
+  for (var i = 1; i <= 60; i++) {
+    ALL.push({ id: i, brand: i <= 20 ? 'A' : (i <= 40 ? 'B' : 'C') });
+  }
+})();
+var taken = [];
+var brand = null;
+
+function takePage() {
+  taken = ALL.slice(0, 20);
+  brand = null;
+  renderFilter();
+  document.getElementById('filter-note').textContent =
+    '已取第 1 页 20 件，恰好全是 A 品牌。现在选一个品牌，看两种做法。';
+}
+
+function chooseBrand(b) {
+  if (!taken.length) {
+    document.getElementById('filter-note').textContent = '先点最左边的「取第 1 页」，否则手里什么都没有。';
+    return;
+  }
+  brand = b;
+  renderFilter();
+
+  var frontHit = taken.filter(function (g) { return g.brand === b; }).length;
+  var backHit = ALL.filter(function (g) { return g.brand === b; }).length;
+  document.getElementById('filter-note').textContent =
+    '选「' + b + '」：前端在手里 20 件里翻到 ' + frontHit + ' 件；后端知道全量，返回 ' + backHit +
+    ' 件。差 ' + (backHit - frontHit) + ' 件，用户却会以为「这个牌子就这么多」。';
+}
+
+function renderFilter() {
+  var front = document.getElementById('front-list');
+  var back = document.getElementById('back-list');
+
+  var frontItems = brand ? taken.filter(function (g) { return g.brand === brand; }) : taken;
+  front.innerHTML = frontItems.length
+    ? frontItems.map(function (g) { return '<div class="g">' + g.brand + '-' + g.id + '</div>'; }).join('')
+    : '<div class="g" style="grid-column:1/-1">没有命中</div>';
+  document.getElementById('front-count').textContent = frontItems.length;
+
+  var backItems = brand ? ALL.filter(function (g) { return g.brand === brand; }) : ALL;
+  var shown = backItems.slice(0, 20);
+  back.innerHTML = shown.map(function (g) { return '<div class="g">' + g.brand + '-' + g.id + '</div>'; }).join('');
+  document.getElementById('back-count').textContent = backItems.length;
+}
+
+/* ---------- 3. 无限加载 ---------- */
+var TOTAL = 57;
+var PAGE_SIZE = 20;
+var inf = { page: 1, list: [], hasMore: true, loading: false, attempts: 0, req: 0, timer: null, mode: 'both' };
+var tickTimer = null;
+
+function resetInfinite() {
+  if (tickTimer) clearInterval(tickTimer);
+  tickTimer = null;
+  inf = { page: 1, list: [], hasMore: true, loading: false, attempts: 0, req: 0, timer: null, mode: inf.mode };
+  renderFeed();
+  setInfiniteBtns(false);
+  document.getElementById('infinite-note').textContent =
+    '正常情况下：第 1 页 20 条、第 2 页 20 条、第 3 页 17 条，共 3 次请求，然后 hasMore 变 false。';
+}
+
+function setInfiniteBtns(disabled) {
+  ['none', 'noloading', 'both'].forEach(function (k) {
+    document.getElementById('ib-' + k).disabled = disabled;
+  });
+}
+
+function runInfinite(mode) {
+  resetInfinite();
+  inf.mode = mode;
+  setInfiniteBtns(true);
+
+  /* 模拟「哨兵一直在视口里」：每 160ms 触发一次，持续 4 秒 */
+  var ticks = 0;
+  tickTimer = setInterval(function () {
+    ticks++;
+    tryLoad();
+    if (ticks >= 25) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+      setInfiniteBtns(false);
+      finishVerdict(mode);
+    }
+  }, 160);
+
+  document.getElementById('infinite-note').textContent = '模拟滚动中……';
+}
+
+function tryLoad() {
+  inf.attempts++;
+  document.getElementById('i-attempt').textContent = inf.attempts;
+
+  if (inf.mode !== 'none') {
+    if (!inf.hasMore) return;
+  } else {
+    /* 没写 hasMore：到底了还继续要 */
+    if (inf.list.length >= TOTAL) { /* 继续请求空页 */ }
+  }
+
+  if (inf.mode === 'both' || inf.mode === 'none') {
+    if (inf.loading) return;
+  }
+
+  inf.loading = true;
+  inf.req++;
+  document.getElementById('i-req').textContent = inf.req;
+
+  setTimeout(function () {
+    var start = (inf.page - 1) * PAGE_SIZE;
+    var items = [];
+    for (var i = start; i < Math.min(start + PAGE_SIZE, TOTAL); i++) {
+      items.push(i + 1);
+    }
+    if (inf.mode === 'none') {
+      /* 没写 hasMore：page 一直加，越界返回空数组，但仍会请求 */
+      inf.list = inf.list.concat(items);
+      inf.page++;
+    } else {
+      inf.list = inf.list.concat(items);
+      inf.hasMore = inf.list.length < TOTAL;
+      if (inf.hasMore) inf.page++;
+    }
+    inf.loading = false;
+    renderFeed();
+  }, 500);
+}
+
+function finishVerdict(mode) {
+  var note = document.getElementById('infinite-note');
+  if (mode === 'none') {
+    note.textContent = '没写 hasMore：取完 57 条后仍继续请求空页，因为是「每触发一次就发一次」，4 秒内发了 ' + inf.req + ' 次。';
+  } else if (mode === 'noloading') {
+    note.textContent = '没写 loading：一次请求要 500ms，而触发每 160ms 一次，于是并发叠加、列表重复追加，最终 ' + inf.list.length + ' 条（实际只有 57 条）。';
+  } else {
+    note.textContent = '两个都写了：3 次请求后 hasMore 变 false，之后所有触发都被挡在门外，列表正好 57 条。共触发 ' + inf.attempts + ' 次机会，只发出 3 次请求。';
+  }
+}
+
+function renderFeed() {
+  var feed = document.getElementById('feed');
+  var items = inf.list.map(function (n) {
+    return '<div class="item">商品 #' + n + '</div>';
+  }).join('');
+  feed.innerHTML = items + '<div class="sentinel" id="sentinel">哨兵：滚到这里就加载下一页</div>';
+  document.getElementById('i-len').textContent = inf.list.length;
+  var more = document.getElementById('i-more');
+  more.textContent = inf.hasMore ? 'true' : 'false';
+  more.className = inf.hasMore ? '' : 'good';
+}
+
+/* ---------- 4. 速查卡 ---------- */
+function renderCards() {
+  var grid = document.getElementById('card-grid');
+  if (!grid) return;
+  var cards = [
+    ['路径 vs query', '分类 id 放路径（页面身份），筛选/排序/页码放 query（视图状态），两者都可分享。'],
+    ['切换筛选要重来', '页码归 1、清空列表、<code>hasMore</code> 复位，三样缺一不可。'],
+    ['筛选回后端', '分页场景前端 <code>filter</code> 只能覆盖当前页，会漏掉后面的数据。'],
+    ['排序也回后端', '前端只排当前 20 条，得不到「全部里面最便宜的」。'],
+    ['无限加载四判断', '<code>isIntersecting</code>、<code>loading</code>、<code>hasMore</code>、<code>onUnmounted(stop)</code>。'],
+    ['终点要写明', '取完显示「没有更多了」，否则用户不知道何时停。'],
+    ['root 别忘', '滚动容器不是视口时，传 <code>root</code>，否则哨兵永远不进视野。'],
+    ['路由顺序', 'Vue Router 3 按注册顺序，具体路径要写前面；4 按具体程度，顺序无关。'],
+  ];
+  grid.innerHTML = cards.map(function (c) {
+    return '<div class="qc"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
+  }).join('');
+}
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  renderPlace();
+  takePage();
+  resetInfinite();
+  renderCards();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会员中心 · 互动图表</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 14px; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px;
+    font-size: 13px; color: #475569; cursor: pointer; transition: all .15s;
+  }
+  .tab-btn:hover { border-color: #94a3b8; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .panel { display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel .hint { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid #3b82f6; background: #3b82f6;
+    color: #fff; font-size: 13px; cursor: pointer;
+  }
+  .btn.plain { background: #fff; color: #475569; border-color: #cbd5e1; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .lbl { font-size: 12px; color: #64748b; }
+  .seg { display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+  .seg button {
+    border: 0; background: #fff; padding: 6px 12px; font-size: 12px; color: #475569; cursor: pointer;
+    border-right: 1px solid #e2e8f0;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: #3b82f6; color: #fff; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { flex: 1; min-width: 96px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; }
+  .stat span { display: block; font-size: 11px; color: #64748b; }
+  .stat b { font-size: 15px; }
+  .stat b.bad { color: #ef4444; }
+  .stat b.good { color: #22c55e; }
+  .stat b.warn { color: #f59e0b; }
+  .urlbox {
+    background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 10px 12px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
+    word-break: break-all; line-height: 1.7; margin-bottom: 12px;
+  }
+  .urlbox .bad { color: #f87171; }
+  .urlbox .ok { color: #4ade80; }
+  table.box { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+  table.box th { text-align: left; font-weight: 500; color: #64748b; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding: 6px 8px; }
+  table.box td { border-bottom: 1px solid #f1f5f9; padding: 7px 8px; }
+  table.box tr:last-child td { border-bottom: 0; }
+  table.box td.red { color: #ef4444; font-weight: 600; }
+  table.box td.green { color: #15803d; font-weight: 600; }
+  table.box td.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; }
+  table.box .empty { text-align: center; color: #94a3b8; padding: 20px; }
+  .log { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 12px; max-height: 160px; overflow-y: auto; }
+  .log-row { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #475569; }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row.bad { color: #b91c1c; background: #fef2f2; }
+  .log-row.ok { color: #15803d; }
+  .log-empty { padding: 14px 10px; font-size: 12px; color: #94a3b8; }
+  .note { margin-top: 12px; padding: 10px 12px; background: #f1f5f9; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; font-size: 12px; color: #475569; }
+  .note.badnote { background: #fef2f2; border-left-color: #ef4444; }
+  .note.goodnote { background: #f0fdf4; border-left-color: #22c55e; }
+  .note code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; cursor: pointer; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 620px) { .cols { grid-template-columns: 1fr; } }
+  .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .card h3 { margin: 0 0 8px; font-size: 13px; color: #0f172a; }
+  .card p { margin: 4px 0 0; font-size: 11.5px; color: #64748b; }
+  .pager { display: flex; gap: 6px; align-items: center; font-size: 12px; color: #475569; }
+  .pager button {
+    border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; padding: 4px 10px;
+    font-size: 12px; color: #475569; cursor: pointer;
+  }
+  .pager button:disabled { opacity: .45; cursor: not-allowed; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .qc { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .qc h3 { margin: 0 0 6px; font-size: 13px; color: #3b82f6; }
+  .qc p { margin: 0; font-size: 12px; color: #475569; }
+  .qc code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  .bar-wrap { height: 22px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-bottom: 6px; }
+  .bar-fill { height: 100%; background: #3b82f6; transition: width .2s; }
+  .bar-fill.warn { background: #f59e0b; }
+  .bar-fill.bad { background: #ef4444; }
+</style>
+</head>
+<body>
+
+<h1>会员中心 · 互动图表</h1>
+<p class="lead">四个实验：一份参数怎么驱动列表、tab 名字怎么变成状态数字、total 从哪来，以及一页速查。</p>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('params', this)">1. 参数驱动列表</button>
+  <button class="tab-btn" onclick="switchTab('map', this)">2. 名字变数字</button>
+  <button class="tab-btn" onclick="switchTab('page', this)">3. 分页与 total</button>
+  <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+</div>
+
+<!-- ========== 1. 参数驱动列表 ========== -->
+<div class="panel active" id="panel-params">
+  <h2>tab 与分页，是同一张点餐单的两个出口</h2>
+  <p class="hint">先翻到第 3 页，再切 tab，注意看「请求参数」与「是否空态」。</p>
+
+  <div class="row">
+    <span class="lbl">当前 tab</span>
+    <div class="seg" id="pm-tabs"></div>
+  </div>
+
+  <div class="row">
+    <div class="pager">
+      <button id="pm-prev" onclick="pmPage(-1)">上一页</button>
+      <span id="pm-pageinfo">第 1 / 1 页</span>
+      <button id="pm-next" onclick="pmPage(1)">下一页</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="pm-reset" checked onchange="pmResetToggle()"> 切 tab 时把 page 重置为 1（正确做法）</label>
+    <button class="btn plain" onclick="pmReset()">重置</button>
+  </div>
+
+  <div class="urlbox" id="pm-url"></div>
+
+  <div class="stats">
+    <div class="stat"><span>该状态总条数</span><b id="pm-total">23</b></div>
+    <div class="stat"><span>页数</span><b id="pm-pages">12</b></div>
+    <div class="stat"><span>本页返回</span><b id="pm-got">2</b></div>
+    <div class="stat"><span>渲染结果</span><b id="pm-state">列表</b></div>
+  </div>
+
+  <table class="box">
+    <thead><tr><th>订单号</th><th>状态</th><th>应付</th></tr></thead>
+    <tbody id="pm-body"></tbody>
+  </table>
+
+  <div class="log" id="pm-log"><div class="log-empty">还没有操作。</div></div>
+
+  <div class="note" id="pm-note"></div>
+</div>
+
+<!-- ========== 2. 名字变数字 ========== -->
+<div class="panel" id="panel-map">
+  <h2>菜单上的「A 套餐」，厨房里叫「套餐 1 号」</h2>
+  <p class="hint">切换实现方式，看后端收到的是什么。</p>
+
+  <div class="row">
+    <span class="lbl">实现</span>
+    <div class="seg">
+      <button class="on" onclick="setMapMode('map', this)">经过映射表（正确）</button>
+      <button onclick="setMapMode('raw', this)">直接传 name（错误）</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="lbl">点击 tab</span>
+    <div class="seg" id="mp-tabs"></div>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>前端发出的参数</h3>
+      <div class="urlbox" id="mp-url" style="margin:8px 0 0"></div>
+    </div>
+    <div class="card">
+      <h3>后端的回应</h3>
+      <div style="font-size:13px;font-weight:600" id="mp-resp-tit">等待选择…</div>
+      <p id="mp-resp-sub">选一个 tab 看看。</p>
+    </div>
+  </div>
+
+  <table class="box">
+    <thead><tr><th>tab 的 name</th><th>tab 的 label</th><th>接口要的 orderState</th></tr></thead>
+    <tbody id="mp-table"></tbody>
+  </table>
+
+  <div class="note" id="mp-note">映射表看起来是「多写一步」，其实是把「给人看的名字」和「给机器看的编号」分开——这两样东西变化的速度完全不同。</div>
+</div>
+
+<!-- ========== 3. 分页与 total ========== -->
+<div class="panel" id="panel-page">
+  <h2>「共多少条」不是数出来的，是问出来的</h2>
+  <p class="hint">调总数与每页条数，再看「用 counts」和「用 length」两种写法的差别。</p>
+
+  <div class="row">
+    <div class="field" style="display:flex;flex-direction:column;gap:4px;min-width:180px">
+      <span class="lbl">订单总数 counts</span>
+      <input id="pg-total" type="number" min="0" max="200" value="23" oninput="renderPage()"
+        style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px">
+    </div>
+    <div class="field" style="display:flex;flex-direction:column;gap:4px;min-width:180px">
+      <span class="lbl">每页条数 pageSize</span>
+      <input id="pg-size" type="number" min="1" max="20" value="2" oninput="renderPage()"
+        style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px">
+    </div>
+    <div class="field" style="display:flex;flex-direction:column;gap:4px;min-width:180px">
+      <span class="lbl">第几页 page</span>
+      <input id="pg-page" type="number" min="1" max="60" value="1" oninput="renderPage()"
+        style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px">
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>用服务端的 counts（正确）</h3>
+      <div style="font-size:26px;font-weight:700" id="pg-right-pages">12</div>
+      <p id="pg-right-sub">12 页，分页条能翻到最后。</p>
+    </div>
+    <div class="card">
+      <h3>用当前页的 length（错误）</h3>
+      <div style="font-size:26px;font-weight:700;color:#ef4444" id="pg-wrong-pages">1</div>
+      <p id="pg-wrong-sub">永远只有 1 页。</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:13px;margin:16px 0 8px">数据库要跳过多少行</h3>
+  <div class="bar-wrap"><div class="bar-fill" id="pg-bar"></div></div>
+  <p style="font-size:12px;color:#64748b" id="pg-offset-text"></p>
+
+  <div class="note" id="pg-note"></div>
+</div>
+
+<!-- ========== 4. 速查卡 ========== -->
+<div class="panel" id="panel-cards">
+  <h2>会员中心速查卡</h2>
+  <p class="hint">八张卡覆盖本章所有容易写错的点。</p>
+  <div class="cards" id="card-grid"></div>
+</div>
+
+<script>
+/* ---------- tab ---------- */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'cards') renderCards();
+  if (name === 'params') renderParams();
+  if (name === 'map') renderMap();
+  if (name === 'page') renderPage();
+}
+
+/* ---------- 共用数据 ---------- */
+var TABS = [
+  { name: 'all', label: '全部订单', state: 0 },
+  { name: 'unpay', label: '待付款', state: 1 },
+  { name: 'deliver', label: '待发货', state: 2 },
+  { name: 'receive', label: '待收货', state: 3 },
+  { name: 'comment', label: '待评价', state: 4 },
+  { name: 'complete', label: '已完成', state: 5 },
+  { name: 'cancel', label: '已取消', state: 6 }
+];
+
+var STATE_TEXT = { 0: '全部', 1: '待付款', 2: '待发货', 3: '待收货', 4: '待评价', 5: '已完成', 6: '已取消' };
+
+/* 每类状态的订单数量，合计 23 */
+var COUNTS = { 0: 23, 1: 3, 2: 5, 3: 4, 4: 6, 5: 3, 6: 2 };
+
+/* 构造一份假订单数据 */
+var ALL_ORDERS = [];
+(function () {
+  var seq = 0;
+  Object.keys(COUNTS).forEach(function (k) {
+    var state = Number(k);
+    if (state === 0) return;
+    for (var i = 0; i < COUNTS[k]; i++) {
+      seq += 1;
+      ALL_ORDERS.push({
+        id: 'ORD' + (978000 + seq),
+        orderState: state,
+        payMoney: 99 + seq * 7
+      });
+    }
+  });
+})();
+
+/* ---------- 1. 参数驱动列表 ---------- */
+var pm = { tab: 'all', page: 1, pageSize: 2, resetOnTab: true, logs: [] };
+
+function pmLog(text, cls) {
+  pm.logs.unshift({ text: text, cls: cls || '' });
+  if (pm.logs.length > 12) pm.logs.pop();
+}
+
+function pmTabClick(name) {
+  var before = pm.page;
+  pm.tab = name;
+  if (pm.resetOnTab && before !== 1) {
+    pm.page = 1;
+    pmLog('切到「' + labelOf(name) + '」，同时把 page 从 ' + before + ' 重置为 1', 'ok');
+  } else {
+    pmLog('切到「' + labelOf(name) + '」，page 保持 ' + pm.page, pm.resetOnTab ? '' : 'bad');
+  }
+  renderParams();
+}
+
+function pmPage(delta) {
+  var pages = pagesOf(pm.tab);
+  var next = pm.page + delta;
+  if (next < 1 || next > pages) return;
+  pm.page = next;
+  pmLog('翻到第 ' + pm.page + ' 页', '');
+  renderParams();
+}
+
+function pmResetToggle() {
+  pm.resetOnTab = document.getElementById('pm-reset').checked;
+  pmLog(pm.resetOnTab ? '打开：切 tab 会重置页码' : '关闭：切 tab 不重置页码——现在去翻页再切 tab 试试', pm.resetOnTab ? 'ok' : 'bad');
+  renderParams();
+}
+
+function pmReset() {
+  pm.tab = 'all';
+  pm.page = 1;
+  pm.resetOnTab = true;
+  document.getElementById('pm-reset').checked = true;
+  pm.logs = [];
+  renderParams();
+}
+
+function stateOf(name) {
+  var t = TABS.filter(function (x) { return x.name === name; })[0];
+  return t ? t.state : 0;
+}
+
+function labelOf(name) {
+  var t = TABS.filter(function (x) { return x.name === name; })[0];
+  return t ? t.label : name;
+}
+
+function pagesOf(name) {
+  return Math.max(1, Math.ceil(COUNTS[stateOf(name)] / pm.pageSize));
+}
+
+function renderParams() {
+  /* tab 按钮 */
+  document.getElementById('pm-tabs').innerHTML = TABS.map(function (t) {
+    return '<button class="' + (t.name === pm.tab ? 'on' : '') + '" onclick="pmTabClick(\'' + t.name + '\')">' +
+      t.label + '</button>';
+  }).join('');
+
+  var total = COUNTS[stateOf(pm.tab)];
+  var pages = pagesOf(pm.tab);
+
+  /* 页码越界时，真实接口会返回空列表 */
+  var overflow = pm.page > pages;
+  var start = (pm.page - 1) * pm.pageSize;
+  var rows = ALL_ORDERS
+    .filter(function (o) { return stateOf(pm.tab) === 0 || o.orderState === stateOf(pm.tab); })
+    .slice(start, start + pm.pageSize);
+
+  document.getElementById('pm-url').innerHTML =
+    'GET /member/order?orderState=<span class="' + (overflow ? 'bad' : 'ok') + '">' + stateOf(pm.tab) + '</span>' +
+    '&amp;page=<span class="' + (overflow ? 'bad' : 'ok') + '">' + pm.page + '</span>' +
+    '&amp;pageSize=' + pm.pageSize;
+
+  document.getElementById('pm-total').textContent = total;
+  document.getElementById('pm-pages').textContent = pages;
+  document.getElementById('pm-got').textContent = rows.length;
+  var stateEl = document.getElementById('pm-state');
+  stateEl.textContent = rows.length ? '列表' : '空态';
+  stateEl.className = rows.length ? 'good' : 'bad';
+
+  var body = document.getElementById('pm-body');
+  body.innerHTML = rows.length
+    ? rows.map(function (o) {
+        return '<tr><td class="mono">' + o.id + '</td><td>' + STATE_TEXT[o.orderState] +
+          '</td><td>¥' + o.payMoney.toFixed(2) + '</td></tr>';
+      }).join('')
+    : '<tr><td class="empty" colspan="3">暂无订单数据（el-empty）</td></tr>';
+
+  document.getElementById('pm-pageinfo').textContent = '第 ' + pm.page + ' / ' + pages + ' 页';
+  document.getElementById('pm-prev').disabled = pm.page <= 1;
+  document.getElementById('pm-next').disabled = pm.page >= pages;
+
+  var logBox = document.getElementById('pm-log');
+  logBox.innerHTML = pm.logs.length
+    ? pm.logs.map(function (r) { return '<div class="log-row ' + r.cls + '">' + r.text + '</div>'; }).join('')
+    : '<div class="log-empty">还没有操作。</div>';
+
+  var note = document.getElementById('pm-note');
+  if (overflow) {
+    note.className = 'note badnote';
+    note.innerHTML = '请求了「' + labelOf(pm.tab) + '的第 ' + pm.page + ' 页」，但这个状态只有 ' + pages +
+      ' 页，于是返回空数组，页面进入空态。用户会以为「我没有待付款的订单」——这就是切 tab 不重置页码的代价。';
+  } else if (!pm.resetOnTab && pm.page > 1) {
+    note.className = 'note';
+    note.innerHTML = '当前停在第 ' + pm.page + ' 页，且「切 tab 不重置页码」是开着的。现在点一个别的 tab，就会复现上面那种空态。';
+  } else {
+    note.className = 'note goodnote';
+    note.innerHTML = '一份 <code>{ orderState, page, pageSize }</code> 就够：改哪个字段，就重新请求一次。切 tab 时把 page 打回 1，是这条路上唯一必须额外记住的规则。';
+  }
+}
+
+/* ---------- 2. 名字变数字 ---------- */
+var mp = { mode: 'map', picked: null };
+
+function setMapMode(mode, btn) {
+  mp.mode = mode;
+  document.querySelectorAll('#panel-map .seg button').forEach(function (b) { b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  renderMap();
+}
+
+function mpPick(name) {
+  mp.picked = name;
+  renderMap();
+}
+
+function renderMap() {
+  document.getElementById('mp-tabs').innerHTML = TABS.filter(function (t) { return t.name !== 'all'; }).map(function (t) {
+    return '<button class="' + (t.name === mp.picked ? 'on' : '') + '" onclick="mpPick(\'' + t.name + '\')">' +
+      t.label + '</button>';
+  }).join('');
+
+  var tbl = document.getElementById('mp-table');
+  tbl.innerHTML = TABS.map(function (t) {
+    return '<tr><td class="mono">' + t.name + '</td><td>' + t.label +
+      '</td><td class="mono green">' + t.state + '</td></tr>';
+  }).join('');
+
+  var urlEl = document.getElementById('mp-url');
+  var tit = document.getElementById('mp-resp-tit');
+  var sub = document.getElementById('mp-resp-sub');
+  var note = document.getElementById('mp-note');
+
+  if (!mp.picked) {
+    urlEl.innerHTML = '<span style="color:#94a3b8">等待选择 tab…</span>';
+    tit.textContent = '等待选择…';
+    tit.style.color = '#0f172a';
+    sub.textContent = '选一个 tab 看看。';
+    return;
+  }
+
+  var state = stateOf(mp.picked);
+  var label = labelOf(mp.picked);
+
+  if (mp.mode === 'map') {
+    urlEl.innerHTML = 'GET /member/order?orderState=<span class="ok">' + state + '</span>&amp;page=1&amp;pageSize=2';
+    tit.textContent = '200 OK，返回 ' + COUNTS[state] + ' 单中的前 2 条';
+    tit.style.color = '#15803d';
+    sub.textContent = '后端只认数字，' + state + ' 就是「' + label + '」。';
+    note.className = 'note goodnote';
+    note.innerHTML = '经过映射表：<code>if (type === \'&\' ...)</code> 这一层把「给人看的名字」翻译成「给机器看的编号」，页面文案随便改，接口不受影响。';
+  } else {
+    urlEl.innerHTML = 'GET /member/order?orderState=<span class="bad">' + mp.picked + '</span>&amp;page=1&amp;pageSize=2';
+    tit.textContent = '400 Bad Request（或返回空列表）';
+    tit.style.color = '#ef4444';
+    sub.textContent = '后端收到字符串 "' + mp.picked + '"，它期望的是 0–6 的数字。';
+    note.className = 'note badnote';
+    note.innerHTML = '直接传 name，等于把「' + label + '」这三个字报给了厨房，而厨房的单子上写的是「套餐 ' + state +
+      ' 号」。这一步不写，tab 看起来能点，但一个订单也查不出来。';
+  }
+}
+
+/* ---------- 3. 分页与 total ---------- */
+function renderPage() {
+  var total = Math.max(0, Number(document.getElementById('pg-total').value) || 0);
+  var size = Math.max(1, Number(document.getElementById('pg-size').value) || 1);
+  var page = Math.max(1, Number(document.getElementById('pg-page').value) || 1);
+
+  var rightPages = Math.max(1, Math.ceil(total / size));
+  var got = total === 0 ? 0 : Math.max(0, Math.min(size, total - (page - 1) * size));
+  var wrongPages = Math.max(1, Math.ceil(got / size));   // 用本页条数当总数
+
+  document.getElementById('pg-right-pages').textContent = rightPages;
+  document.getElementById('pg-right-sub').textContent = rightPages + ' 页，分页条能翻到最后。共 ' + total + ' 条，每页 ' + size + ' 条。';
+
+  document.getElementById('pg-wrong-pages').textContent = wrongPages;
+  document.getElementById('pg-wrong-sub').textContent = '当前页只拿到 ' + got + ' 条，于是算出 ' + wrongPages + ' 页。';
+
+  var offset = (page - 1) * size;
+  var ratio = total === 0 ? 0 : Math.min(100, (offset / Math.max(total, 1)) * 100);
+  var bar = document.getElementById('pg-bar');
+  bar.style.width = Math.max(ratio, offset > 0 ? 2 : 0) + '%';
+  bar.className = 'bar-fill' + (ratio > 60 ? ' bad' : (ratio > 25 ? ' warn' : ''));
+  document.getElementById('pg-offset-text').innerHTML =
+    'LIMIT ' + size + ' OFFSET ' + offset + ' —— 数据库要先读出前 ' + offset + ' 行，再丢掉它们。';
+
+  var note = document.getElementById('pg-note');
+  if (page > rightPages) {
+    note.className = 'note badnote';
+    note.innerHTML = '这个 page 超出了总页数，接口会返回空数组——分页条自己不会「拦住」越界的页码，只有把 <code>:total</code> 传对，它才能算出正确的页数。';
+  } else if (offset > 200) {
+    note.className = 'note badnote';
+    note.innerHTML = '这已经是深分页：OFFSET ' + offset + ' 意味着前 ' + offset + ' 行被完整读出又丢弃。页码越大越慢，这是 offset 分页的固有代价——量大的场景该换 cursor。';
+  } else {
+    note.className = 'note';
+    note.innerHTML = '<code>:total</code> 交给分页组件，它自己算页数；<code>page</code> 交给接口，它自己算跳过的行数。两个数字各司其职，都不能靠「数一数当前页」得到。';
+  }
+}
+
+/* ---------- 4. 速查卡 ---------- */
+var CARDS = [
+  { t: '空 path 是默认页', p: '<code>children</code> 里 <code>path: \'\'</code> 那一条，就是访问 <code>/member</code> 时显示的房间。' },
+  { t: '子路由不带斜杠', p: '<code>path: \'order\'</code> 才是 <code>/member/order</code>；加了斜杠就跑到根上去。' },
+  { t: 'to="/" 要加 exact', p: '所有路径都以 <code>/</code> 开头，不加 <code>exact</code> 它就永远高亮。' },
+  { t: '账号读 store', p: '头像与昵称在登录时就进了 <code>userStore</code>，再请求一次只会制造两份不同步的数据。' },
+  { t: '一份 params', p: '<code>{ orderState, page, pageSize }</code> 同时驱动 tab 与分页，改完必须重新请求。' },
+  { t: 'name 要映射成数字', p: 'tab 的 <code>\'unpay\'</code> 与接口的 <code>1</code> 之间必须有 <code>stateMap</code>。' },
+  { t: '切 tab 回第 1 页', p: '否则会请求「新状态的第 N 页」，命中空态，用户以为没订单。' },
+  { t: 'total 问服务端', p: '用 <code>counts</code> 不用 <code>length</code>；<code>el-pagination</code> 靠它算页数。' }
+];
+
+function renderCards() {
+  document.getElementById('card-grid').innerHTML = CARDS.map(function (c, i) {
+    return '<div class="qc"><h3>' + (i + 1) + '. ' + c.t + '</h3><p>' + c.p + '</p></div>';
+  }).join('');
+}
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  renderParams();
+  renderMap();
+  renderPage();
+  renderCards();
+});
+</script>
+</body>
+</html>

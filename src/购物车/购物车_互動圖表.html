@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>购物车 · 互动图表</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 8px 14px; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px;
+    font-size: 13px; color: #475569; cursor: pointer; transition: all .15s;
+  }
+  .tab-btn:hover { border-color: #94a3b8; }
+  .tab-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .panel { display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 15px; margin: 0 0 6px; }
+  .panel .hint { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+  .btn {
+    padding: 7px 14px; border-radius: 8px; border: 1px solid #3b82f6; background: #3b82f6;
+    color: #fff; font-size: 13px; cursor: pointer;
+  }
+  .btn.plain { background: #fff; color: #475569; border-color: #cbd5e1; }
+  .btn.ghost { background: #fff; color: #3b82f6; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .lbl { font-size: 12px; color: #64748b; }
+  .seg { display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+  .seg button {
+    border: 0; background: #fff; padding: 6px 12px; font-size: 12px; color: #475569; cursor: pointer;
+    border-right: 1px solid #e2e8f0;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: #3b82f6; color: #fff; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { flex: 1; min-width: 100px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; }
+  .stat span { display: block; font-size: 11px; color: #64748b; }
+  .stat b { font-size: 15px; }
+  .stat b.bad { color: #ef4444; }
+  .stat b.good { color: #22c55e; }
+  .stat b.warn { color: #f59e0b; }
+  table.box { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+  table.box th {
+    text-align: left; font-weight: 500; color: #64748b; font-size: 11px;
+    border-bottom: 1px solid #e2e8f0; padding: 6px 8px;
+  }
+  table.box td { border-bottom: 1px solid #f1f5f9; padding: 8px; }
+  table.box tr:last-child td { border-bottom: 0; }
+  table.box .red { color: #ef4444; font-weight: 600; }
+  table.box .muted { color: #94a3b8; }
+  table.box .empty { text-align: center; color: #94a3b8; padding: 18px; }
+  .log { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 12px; max-height: 180px; overflow-y: auto; }
+  .log-row { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #475569; }
+  .log-row:last-child { border-bottom: 0; }
+  .log-row b { color: #3b82f6; font-weight: 600; }
+  .log-empty { padding: 14px 10px; font-size: 12px; color: #94a3b8; }
+  .note { margin-top: 12px; padding: 10px 12px; background: #f1f5f9; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; font-size: 12px; color: #475569; }
+  .note.badnote { background: #fef2f2; border-left-color: #ef4444; }
+  .note code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  .qnum { width: 74px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .big { font-size: 18px; font-weight: 600; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .qc { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .qc h3 { margin: 0 0 6px; font-size: 13px; color: #3b82f6; }
+  .qc p { margin: 0; font-size: 12px; color: #475569; }
+  .qc code { background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>购物车 · 互动图表</h1>
+<p class="lead">四个实验：用什么键合并商品、全选与统计怎么算、金额为什么会飘，以及一页速查。</p>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('merge', this)">1. 加购与合并</button>
+  <button class="tab-btn" onclick="switchTab('check', this)">2. 全选与统计</button>
+  <button class="tab-btn" onclick="switchTab('money', this)">3. 金额精度</button>
+  <button class="tab-btn" onclick="switchTab('cards', this)">4. 速查卡</button>
+</div>
+
+<!-- ========== 1. 加购与合并 ========== -->
+<div class="panel active" id="panel-merge">
+  <h2>同一件东西，凭什么算「同一件」</h2>
+  <p class="hint">先选合并依据，再往车里加几次不同颜色的同一款 T 恤，看行数怎么变。</p>
+
+  <div class="row">
+    <span class="lbl">合并依据</span>
+    <div class="seg" id="seg-key">
+      <button class="on" onclick="setKey('skuId', this)">skuId（正确）</button>
+      <button onclick="setKey('goodsId', this)">商品 id（错误）</button>
+    </div>
+    <span class="lbl">数量</span>
+    <input class="qnum" id="m-qty" type="number" value="1" min="1" max="9">
+  </div>
+
+  <div class="row">
+    <button class="btn plain" onclick="addGoods(101)">加「黑 / M」</button>
+    <button class="btn plain" onclick="addGoods(102)">加「白 / M」</button>
+    <button class="btn plain" onclick="addGoods(103)">加「短袜三双」</button>
+    <button class="btn ghost" onclick="resetMerge()">清空购物车</button>
+  </div>
+
+  <table class="box">
+    <thead>
+      <tr><th>商品</th><th>规格</th><th>单价</th><th>数量</th><th>小计</th></tr>
+    </thead>
+    <tbody id="m-body"></tbody>
+  </table>
+
+  <div class="stats">
+    <div class="stat"><span>行数（cartList.length）</span><b id="m-rows">0</b></div>
+    <div class="stat"><span>件数（allCount）</span><b id="m-count">0</b></div>
+    <div class="stat"><span>金额（allPrice）</span><b id="m-price">0.00</b></div>
+  </div>
+
+  <div class="log" id="m-log"><div class="log-empty">还没有操作。</div></div>
+
+  <div class="note" id="m-note">当前按 <code>skuId</code> 合并：黑 M 与白 M 是两个不同的规格，各占一行。</div>
+</div>
+
+<!-- ========== 2. 全选与统计 ========== -->
+<div class="panel" id="panel-check">
+  <h2>全选是「算」出来的，不是「存」出来的</h2>
+  <p class="hint">勾选任意一行，看全选框怎么跟着变；再点「清空」，注意空车时两种写法的差别。</p>
+
+  <table class="box">
+    <thead>
+      <tr><th style="width:44px">选择</th><th>商品</th><th>单价</th><th>数量</th><th>小计</th></tr>
+    </thead>
+    <tbody id="c-body"></tbody>
+  </table>
+
+  <div class="row">
+    <label class="chk"><input type="checkbox" id="c-all" onchange="toggleAll(this.checked)"> 全选</label>
+    <button class="btn plain" onclick="fillCart()">恢复三件商品</button>
+    <button class="btn plain" onclick="emptyCart()">清空购物车</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>总件数</span><b id="c-allcount">0</b></div>
+    <div class="stat"><span>总金额</span><b id="c-allprice">0.00</b></div>
+    <div class="stat"><span>已选件数</span><b id="c-selcount">0</b></div>
+    <div class="stat"><span>已选金额</span><b id="c-selprice">0.00</b></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>朴素写法 every(...)</span><b id="c-naive">—</b></div>
+    <div class="stat"><span>正确写法 length &gt; 0 &amp;&amp; every(...)</span><b id="c-correct">—</b></div>
+    <div class="stat"><span>下单按钮</span><b id="c-btn">—</b></div>
+  </div>
+
+  <div class="note" id="c-note">先勾几个试试。全选框的状态完全由每一行算出来，它自己不存任何东西。</div>
+</div>
+
+<!-- ========== 3. 金额精度 ========== -->
+<div class="panel" id="panel-money">
+  <h2>同样是加钱，两种算法差在哪里</h2>
+  <p class="hint">连点几次加价，对比「浮点元」与「整数分」两条路径的中间值与最终展示值。</p>
+
+  <div class="row">
+    <button class="btn plain" onclick="addMoney(0.1)">加 ¥0.10</button>
+    <button class="btn plain" onclick="addMoney(0.2)">加 ¥0.20</button>
+    <button class="btn plain" onclick="addMoney(19.9)">加 ¥19.90</button>
+    <button class="btn ghost" onclick="resetMoney()">清零</button>
+  </div>
+
+  <table class="box">
+    <thead>
+      <tr><th>路径</th><th>累加结果（原样）</th><th>展示值</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>浮点（元）</td>
+        <td class="mono" id="mo-float">0</td>
+        <td class="red" id="mo-float-show">0.00</td>
+      </tr>
+      <tr>
+        <td>整数（分）</td>
+        <td class="mono" id="mo-cent">0 分</td>
+        <td class="red" id="mo-cent-show">0.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="stats">
+    <div class="stat"><span>两者差值</span><b id="mo-diff" class="good">0</b></div>
+    <div class="stat"><span>typeof toFixed(2)</span><b id="mo-type">string</b></div>
+    <div class="stat"><span>累加次数</span><b id="mo-times">0</b></div>
+  </div>
+
+  <div class="note" id="mo-note">点几次「加 ¥0.10」看看。差值一开始是 0，多按几下就会露出尾巴。</div>
+</div>
+
+<!-- ========== 4. 速查卡 ========== -->
+<div class="panel" id="panel-cards">
+  <h2>购物车速查卡</h2>
+  <p class="hint">八张卡覆盖本章所有容易写错的点。</p>
+  <div class="cards" id="card-grid"></div>
+</div>
+
+<script>
+/* ---------- tab ---------- */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'cards') renderCards();
+  if (name === 'merge') renderMerge();
+  if (name === 'check') renderCheck();
+}
+
+/* ---------- 1. 加购与合并 ---------- */
+var GOODS = {
+  101: { goodsId: 1, skuId: 101, name: '纯棉 T 恤', attrs: '黑 / M', price: 99 },
+  102: { goodsId: 1, skuId: 102, name: '纯棉 T 恤', attrs: '白 / M', price: 99 },
+  103: { goodsId: 2, skuId: 103, name: '短袜三双', attrs: '均码', price: 29 }
+};
+var keyMode = 'skuId';
+var cart = [];
+var mergeLogs = [];
+
+function setKey(mode, btn) {
+  keyMode = mode;
+  document.querySelectorAll('#seg-key button').forEach(function (b) { b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var note = document.getElementById('m-note');
+  note.className = 'note' + (mode === 'goodsId' ? ' badnote' : '');
+  note.innerHTML = mode === 'goodsId'
+    ? '当前按<code>商品 id</code>合并：黑 M 与白 M 属于同一款商品，会被合并成一行——数量加在一起，规格只剩第一个。'
+    : '当前按 <code>skuId</code> 合并：黑 M 与白 M 是两个不同的规格，各占一行。';
+  resetMerge();
+}
+
+function readQty() {
+  var v = Number(document.getElementById('m-qty').value);
+  return v > 0 && v % 1 === 0 ? Math.min(v, 9) : 1;
+}
+
+function addGoods(skuId) {
+  var goods = GOODS[skuId];
+  var qty = readQty();
+  var found = null;
+  for (var i = 0; i < cart.length; i++) {
+    if (cart[i][keyMode] === goods[keyMode]) { found = cart[i]; break; }
+  }
+  if (found) {
+    found.count += qty;
+    pushMergeLog('用 ' + keyMode + '=' + goods[keyMode] + ' 匹配 → <b>命中</b>，数量 +' + qty);
+  } else {
+    cart.push({ goodsId: goods.goodsId, skuId: goods.skuId, name: goods.name, attrs: goods.attrs, price: goods.price, count: qty, selected: true });
+    pushMergeLog('用 ' + keyMode + '=' + goods[keyMode] + ' 匹配 → 未命中，<b>新增一行</b>');
+  }
+  renderMerge();
+}
+
+function pushMergeLog(text) {
+  mergeLogs.unshift(text);
+  if (mergeLogs.length > 8) mergeLogs.pop();
+}
+
+function renderMerge() {
+  var body = document.getElementById('m-body');
+  if (!body) return;
+  if (!cart.length) {
+    body.innerHTML = '<tr><td class="empty" colspan="5">购物车是空的，点上面的按钮加几件</td></tr>';
+  } else {
+    body.innerHTML = cart.map(function (i) {
+      return '<tr><td>' + i.name + '</td>' +
+        '<td class="muted">' + (keyMode === 'goodsId' ? (i.attrs + '（可能已被合并掉）') : i.attrs) + '</td>' +
+        '<td>¥' + i.price + '</td>' +
+        '<td>' + i.count + '</td>' +
+        '<td class="red">¥' + (i.price * i.count).toFixed(2) + '</td></tr>';
+    }).join('');
+  }
+
+  var count = cart.reduce(function (s, i) { return s + i.count; }, 0);
+  var price = cart.reduce(function (s, i) { return s + i.price * i.count; }, 0);
+  document.getElementById('m-rows').textContent = cart.length;
+  document.getElementById('m-count').textContent = count;
+  document.getElementById('m-price').textContent = price.toFixed(2);
+
+  var log = document.getElementById('m-log');
+  if (!mergeLogs.length) {
+    log.innerHTML = '<div class="log-empty">还没有操作。</div>';
+  } else {
+    log.innerHTML = mergeLogs.map(function (t) { return '<div class="log-row">' + t + '</div>'; }).join('');
+  }
+}
+
+function resetMerge() {
+  cart = [];
+  mergeLogs = [];
+  renderMerge();
+}
+
+/* ---------- 2. 全选与统计 ---------- */
+var ROWS = [
+  { name: '纯棉 T 恤', price: 99, count: 2, selected: true },
+  { name: '珊瑚绒睡衣', price: 159, count: 1, selected: true },
+  { name: '短袜三双', price: 29, count: 3, selected: false }
+];
+var cartRows = ROWS.map(function (r) { return { name: r.name, price: r.price, count: r.count, selected: r.selected }; });
+
+function fillCart() {
+  cartRows = [
+    { name: '纯棉 T 恤', price: 99, count: 2, selected: true },
+    { name: '珊瑚绒睡衣', price: 159, count: 1, selected: true },
+    { name: '短袜三双', price: 29, count: 3, selected: false }
+  ];
+  renderCheck();
+}
+
+function emptyCart() {
+  cartRows = [];
+  renderCheck();
+}
+
+function toggleSel(i, checked) {
+  cartRows[i].selected = checked;
+  renderCheck();
+}
+
+function toggleAll(checked) {
+  cartRows.forEach(function (r) { r.selected = checked; });
+  renderCheck();
+}
+
+function renderCheck() {
+  var body = document.getElementById('c-body');
+  if (!body) return;
+  if (!cartRows.length) {
+    body.innerHTML = '<tr><td class="empty" colspan="5">购物车为空</td></tr>';
+  } else {
+    body.innerHTML = cartRows.map(function (r, i) {
+      return '<tr>' +
+        '<td><input type="checkbox" ' + (r.selected ? 'checked' : '') +
+        ' onchange="toggleSel(' + i + ', this.checked)"></td>' +
+        '<td>' + r.name + '</td>' +
+        '<td>¥' + r.price + '</td>' +
+        '<td>' + r.count + '</td>' +
+        '<td class="red">¥' + (r.price * r.count).toFixed(2) + '</td></tr>';
+    }).join('');
+  }
+
+  var allCount = cartRows.reduce(function (s, r) { return s + r.count; }, 0);
+  var allPrice = cartRows.reduce(function (s, r) { return s + r.price * r.count; }, 0);
+  var sel = cartRows.filter(function (r) { return r.selected; });
+  var selCount = sel.reduce(function (s, r) { return s + r.count; }, 0);
+  var selPrice = sel.reduce(function (s, r) { return s + r.price * r.count; }, 0);
+
+  document.getElementById('c-allcount').textContent = allCount;
+  document.getElementById('c-allprice').textContent = allPrice.toFixed(2);
+  document.getElementById('c-selcount').textContent = selCount;
+  document.getElementById('c-selprice').textContent = selPrice.toFixed(2);
+
+  var naive = cartRows.every(function (r) { return r.selected; });
+  var correct = cartRows.length > 0 && naive;
+
+  var nEl = document.getElementById('c-naive');
+  var cEl = document.getElementById('c-correct');
+  nEl.textContent = String(naive);
+  nEl.className = (naive && !cartRows.length) ? 'warn' : (naive ? 'good' : '');
+  cEl.textContent = String(correct);
+  cEl.className = correct ? 'good' : '';
+
+  var all = document.getElementById('c-all');
+  all.checked = correct;
+
+  var btn = document.getElementById('c-btn');
+  btn.textContent = selCount > 0 ? '可下单（' + selCount + ' 件）' : '不可下单';
+  btn.className = selCount > 0 ? 'good' : 'bad';
+
+  var note = document.getElementById('c-note');
+  if (!cartRows.length) {
+    note.className = 'note badnote';
+    note.textContent = '空车时，朴素写法 every(...) 返回 true——于是全选框会被勾上。这就是为什么必须加 length > 0。';
+  } else if (correct) {
+    note.className = 'note';
+    note.textContent = '全部勾选：全选框跟着变成勾上。注意它没有自己的状态，只是把三行的结果算了一遍。';
+  } else {
+    note.className = 'note';
+    note.textContent = '还有没勾的行，所以全选框是空的。点全选框会一次改完所有行。';
+  }
+}
+
+/* ---------- 3. 金额精度 ---------- */
+var cents = 0;
+var floatSum = 0;
+var times = 0;
+
+function addMoney(v) {
+  cents += Math.round(v * 100);
+  floatSum += v;
+  times++;
+  renderMoney();
+}
+
+function resetMoney() {
+  cents = 0;
+  floatSum = 0;
+  times = 0;
+  renderMoney();
+}
+
+function renderMoney() {
+  var centValue = cents / 100;
+  document.getElementById('mo-float').textContent = String(floatSum);
+  document.getElementById('mo-float-show').textContent = floatSum.toFixed(2);
+  document.getElementById('mo-cent').textContent = cents + ' 分';
+  document.getElementById('mo-cent-show').textContent = centValue.toFixed(2);
+
+  var diff = floatSum - centValue;
+  var dEl = document.getElementById('mo-diff');
+  dEl.textContent = diff === 0 ? '0' : diff.toExponential(3);
+  dEl.className = diff === 0 ? 'good' : 'bad';
+  document.getElementById('mo-type').textContent = typeof floatSum.toFixed(2);
+  document.getElementById('mo-times').textContent = times;
+
+  var note = document.getElementById('mo-note');
+  if (!times) {
+    note.className = 'note';
+    note.textContent = '点几次「加 ¥0.10」看看。差值一开始是 0，多按几下就会露出尾巴。';
+  } else if (diff === 0) {
+    note.className = 'note';
+    note.textContent = '这一次两条路径的结果相同——误差不是每次都出现，这恰恰是它最难查的原因。';
+  } else {
+    note.className = 'note badnote';
+    note.textContent = '两条路径已经分叉了：浮点路径多了 ' + diff.toExponential(3) +
+      '。展示层用 toFixed(2) 能盖住，但一旦拿它去比较「满 199 减 20」，就会差一分钱。';
+  }
+}
+
+/* ---------- 4. 速查卡 ---------- */
+function renderCards() {
+  var grid = document.getElementById('card-grid');
+  if (!grid) return;
+  var cards = [
+    ['认东西用 skuId', '商品 id 只到「款」，颜色尺码的价格与库存都绑在 skuId 上。'],
+    ['新增补 selected', '不加默认勾选，用户进车看到合计 0，会以为没加上。'],
+    ['删除别用 splice', '<code>findIndex</code> 返回 -1 时 <code>splice(-1,1)</code> 会删最后一行，改用 filter。'],
+    ['全选要判空', '<code>[].every()</code> 是 true，必须写 <code>length &gt; 0 &amp;&amp; every(...)</code>。'],
+    ['四个统计都现算', 'reduce 记得给初始值 0，空车才不白屏。'],
+    ['金额不进计算属性', '<code>toFixed</code> 返回字符串，格式化只放渲染层。'],
+    ['合并要有事务', '逐条上传会留下半份数据，交给服务端一次合并。'],
+    ['退出要清车', '不清就是上一个人把购物车留给下一个人，属于泄露。']
+  ];
+  grid.innerHTML = cards.map(function (c) {
+    return '<div class="qc"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
+  }).join('');
+}
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  renderMerge();
+  renderCheck();
+  renderMoney();
+  renderCards();
+});
+</script>
+</body>
+</html>

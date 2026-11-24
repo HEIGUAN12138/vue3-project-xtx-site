@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue3入门 - 交互图表</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            min-height: 100%;
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', -apple-system, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            line-height: 1.7;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+        header { text-align: center; margin-bottom: 28px; padding: 12px 0; }
+        h1 { font-size: 2rem; color: #0f172a; font-weight: 700; margin-bottom: 6px; }
+        .subtitle { color: #64748b; font-size: 1rem; }
+
+        .tabs-nav {
+            display: flex; gap: 10px; margin-bottom: 20px;
+            flex-wrap: wrap; justify-content: center;
+        }
+
+        .tab-btn {
+            padding: 10px 20px; border: none; background: #e2e8f0; color: #475569;
+            font-size: .95rem; font-weight: 600; border-radius: 20px; cursor: pointer;
+            transition: all .25s ease; font-family: inherit;
+        }
+        .tab-btn:hover { background: #cbd5e1; transform: translateY(-1px); }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,.3);
+        }
+
+        .tabs-container {
+            background: #fff; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,.07); padding: 24px; margin-bottom: 24px;
+        }
+
+        .tab-content { display: none; animation: fadeIn .25s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        .section-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+        .hint { color: #64748b; font-size: .88rem; margin-bottom: 16px; }
+
+        /* ---- Tab 1 代码对照 ---- */
+        .sample-switch { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .chip {
+            padding: 6px 14px; border: 1.5px solid #cbd5e1; background: #fff; color: #475569;
+            border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; font-family: inherit;
+        }
+        .chip.active { border-color: #3b82f6; background: #dbeafe; color: #1e40af; }
+
+        .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .code-col { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+        .code-col-head {
+            padding: 8px 12px; font-size: .82rem; font-weight: 700; letter-spacing: .02em;
+            background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569;
+        }
+        .code-col-head.old { border-left: 3px solid #94a3b8; }
+        .code-col-head.new { border-left: 3px solid #3b82f6; color: #1d4ed8; }
+        .code-row {
+            font-family: ui-monospace, Consolas, monospace; font-size: .8rem;
+            padding: 3px 12px; cursor: pointer; white-space: pre-wrap; word-break: break-word;
+            border-left: 3px solid transparent; color: #334155;
+        }
+        .code-row:nth-child(odd) { background: #fbfdff; }
+        .code-row:hover { background: #eff6ff; }
+        .code-row.sel { background: #dbeafe; border-left-color: #3b82f6; }
+        .code-row .kw { color: #7c3aed; }
+        .code-row .fn { color: #0891b2; }
+        .code-row .cm { color: #94a3b8; }
+
+        .code-note {
+            margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+            background: #eff6ff; border-left: 4px solid #3b82f6; font-size: .9rem; color: #1e3a8a;
+        }
+
+        /* ---- Tab 2 响应式模拟 ---- */
+        .sim-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
+        .panel { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+        .panel-title { font-size: .85rem; font-weight: 700; color: #475569; margin-bottom: 12px; letter-spacing: .03em; }
+
+        .box {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; border-radius: 8px; margin-bottom: 10px;
+            background: #f8fafc; border: 1px dashed #cbd5e1;
+        }
+        .box-label { font-family: ui-monospace, monospace; font-size: .82rem; color: #475569; }
+        .box-value { font-family: ui-monospace, monospace; font-weight: 700; color: #1d4ed8; }
+
+        .view-node {
+            padding: 10px 12px; border-radius: 8px; margin-bottom: 10px;
+            background: #fff; border: 1px solid #dbeafe;
+        }
+        .view-node.flash { animation: flash 0.5s ease; }
+        @keyframes flash {
+            0% { background: #dbeafe; transform: scale(1.01); }
+            100% { background: #fff; transform: none; }
+        }
+        .view-label { font-size: .78rem; color: #64748b; }
+        .view-text { font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+
+        .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .btn {
+            padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer;
+            font-size: .85rem; font-weight: 600; font-family: inherit; color: #fff;
+            background: #3b82f6; transition: .2s;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn.gray { background: #e2e8f0; color: #475569; }
+        .btn.gray:hover { background: #cbd5e1; }
+        .btn.danger { background: #ef4444; }
+        .btn.danger:hover { background: #dc2626; }
+
+        .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+        .slider-row input[type=range] { flex: 1; accent-color: #3b82f6; }
+
+        .log {
+            height: 190px; overflow-y: auto; background: #0f172a; border-radius: 8px;
+            padding: 10px 12px; font-family: ui-monospace, Consolas, monospace; font-size: .76rem;
+            color: #94a3b8; line-height: 1.8;
+        }
+        .log div { white-space: pre-wrap; word-break: break-word; }
+        .log .ok { color: #4ade80; }
+        .log .warn { color: #fbbf24; }
+        .log .info { color: #60a5fa; }
+
+        .warning {
+            margin-top: 10px; padding: 10px 12px; border-radius: 8px; font-size: .85rem;
+            background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b; display: none;
+        }
+        .warning.show { display: block; }
+
+        /* ---- Tab 3 生命周期 ---- */
+        .stage-track { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+        .stage {
+            flex: 1 1 110px; padding: 10px 6px; text-align: center; cursor: pointer;
+            border-radius: 8px; background: #f1f5f9; border: 1.5px solid transparent;
+            font-family: ui-monospace, monospace; font-size: .74rem; color: #475569; transition: .2s;
+        }
+        .stage:hover { background: #e2e8f0; }
+        .stage.active { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; font-weight: 700; }
+        .stage.done { background: #dcfce7; color: #15803d; }
+
+        .comp-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        .comp-stage {
+            border: 2px dashed #cbd5e1; border-radius: 10px; padding: 16px; min-height: 170px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+            transition: .3s;
+        }
+        .comp-stage.mounted { border-style: solid; border-color: #22c55e; background: #f0fdf4; }
+        .comp-stage.unmounted { opacity: .45; }
+        .comp-box {
+            padding: 10px 18px; border-radius: 8px; background: #3b82f6; color: #fff;
+            font-size: .85rem; font-weight: 700; transition: .3s;
+        }
+        .comp-box.update { background: #f59e0b; }
+        .comp-note { font-size: .8rem; color: #64748b; }
+
+        .stage-detail { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; font-size: .88rem; }
+        .stage-detail h4 { font-size: .95rem; color: #0f172a; margin-bottom: 8px; }
+        .stage-detail p { margin-bottom: 8px; color: #334155; }
+        .stage-detail .tag {
+            display: inline-block; padding: 2px 8px; border-radius: 999px;
+            font-size: .72rem; font-weight: 700; margin-right: 6px;
+        }
+        .tag.can { background: #dcfce7; color: #15803d; }
+        .tag.cant { background: #fee2e2; color: #b91c1c; }
+
+        /* ---- Tab 4 速查卡 ---- */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+        .card {
+            height: 190px; perspective: 1000px; cursor: pointer;
+        }
+        .card-inner {
+            position: relative; width: 100%; height: 100%;
+            transition: transform .5s; transform-style: preserve-3d;
+        }
+        .card.flipped .card-inner { transform: rotateY(180deg); }
+        .card-face {
+            position: absolute; inset: 0; backface-visibility: hidden;
+            border-radius: 10px; padding: 14px; display: flex; flex-direction: column;
+            justify-content: center; border: 1px solid #e2e8f0;
+        }
+        .card-front { background: #f8fafc; }
+        .card-back { background: #eff6ff; transform: rotateY(180deg); border-color: #bfdbfe; overflow-y: auto; }
+        .card-name { font-family: ui-monospace, monospace; font-size: 1rem; font-weight: 700; color: #1d4ed8; margin-bottom: 6px; }
+        .card-oneline { font-size: .84rem; color: #475569; }
+        .card-face .k { font-size: .7rem; font-weight: 700; color: #64748b; letter-spacing: .05em; margin-top: 6px; }
+        .card-face code {
+            display: block; font-family: ui-monospace, monospace; font-size: .74rem;
+            background: #fff; padding: 4px 6px; border-radius: 4px; color: #7c3aed; margin-top: 2px;
+            white-space: pre-wrap; word-break: break-word;
+        }
+        .card-face .pit { font-size: .76rem; color: #b91c1c; margin-top: 2px; }
+
+        footer { text-align: center; color: #94a3b8; font-size: .78rem; padding: 10px 0 20px; }
+
+        @media (max-width: 820px) {
+            .code-grid, .sim-grid, .comp-wrap { grid-template-columns: 1fr; }
+            .tabs-container { padding: 16px; }
+            h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Vue3入门</h1>
+            <p class="subtitle">交互式学习工具 · 四个模型把「响应式」看穿</p>
+        </header>
+
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('code', this)">写法对照</button>
+            <button class="tab-btn" onclick="switchTab('react', this)">响应式模拟器</button>
+            <button class="tab-btn" onclick="switchTab('life', this)">生命周期时间轴</button>
+            <button class="tab-btn" onclick="switchTab('cards', this)">指令速查卡</button>
+        </div>
+
+        <div class="tabs-container">
+            <!-- Tab 1 -->
+            <div id="code" class="tab-content active">
+                <div class="section-title">同一个功能，两种写法</div>
+                <p class="hint">点任意一行，看这两种写法在「代码放在哪」上的差别。</p>
+                <div class="sample-switch" id="sampleSwitch"></div>
+                <div class="code-grid">
+                    <div class="code-col">
+                        <div class="code-col-head old">选项式 API（Vue 2 风格）</div>
+                        <div id="codeLeft"></div>
+                    </div>
+                    <div class="code-col">
+                        <div class="code-col-head new">组合式 API（Vue 3）</div>
+                        <div id="codeRight"></div>
+                    </div>
+                </div>
+                <div class="code-note" id="codeNote">选一个场景开始。</div>
+            </div>
+
+            <!-- Tab 2 -->
+            <div id="react" class="tab-content">
+                <div class="section-title">数据变了，谁被通知？</div>
+                <p class="hint">左边是数据与被登记的依赖，右边是视图。操作后看日志：Vue 只更新「用过这份数据」的地方。</p>
+                <div class="sim-grid">
+                    <div>
+                        <div class="panel">
+                            <div class="panel-title">① 状态层（ref 包装盒）</div>
+                            <div class="box">
+                                <span class="box-label">count = ref(0)</span>
+                                <span class="box-value" id="boxCount">0</span>
+                            </div>
+                            <div class="box">
+                                <span class="box-label">price = ref(99)</span>
+                                <span class="box-value" id="boxPrice">99</span>
+                            </div>
+                            <div class="box" style="border-style:solid;border-color:#bfdbfe;background:#eff6ff">
+                                <span class="box-label">total = computed(...)</span>
+                                <span class="box-value" id="boxTotal">0</span>
+                            </div>
+                            <div class="controls">
+                                <button class="btn" onclick="simInc(1)">count +1</button>
+                                <button class="btn" onclick="simInc(10)">count +10</button>
+                                <button class="btn gray" onclick="simReset()">重置</button>
+                                <button class="btn danger" onclick="simMutateProps()">直接改 props</button>
+                            </div>
+                            <div class="slider-row">
+                                <span class="box-label">price</span>
+                                <input type="range" id="priceRange" min="10" max="999" step="1" value="99" oninput="simPrice(this.value)">
+                                <span class="box-value" id="priceLabel">99</span>
+                            </div>
+                            <div class="warning" id="simWarning">
+                                子组件不能直接修改 props。Vue 会给出只读警告，父组件也不会同步。正确做法是 emit 事件，由父组件修改。
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="panel">
+                            <div class="panel-title">② 视图层（渲染结果）</div>
+                            <div class="view-node" id="viewCount">
+                                <div class="view-label">依赖 count 的节点</div>
+                                <div class="view-text">数量：<span id="txtCount">0</span> 件</div>
+                            </div>
+                            <div class="view-node">
+                                <div class="view-label">依赖 price 的节点</div>
+                                <div class="view-text">单价：<span id="txtPrice">99</span> 元</div>
+                            </div>
+                            <div class="view-node" id="viewTotal">
+                                <div class="view-label">依赖 count + price 的节点</div>
+                                <div class="view-text">合计：<span id="txtTotal">0</span> 元</div>
+                            </div>
+                        </div>
+                        <div class="panel" style="margin-top:14px">
+                            <div class="panel-title">③ 更新日志</div>
+                            <div class="log" id="simLog"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3 -->
+            <div id="life" class="tab-content">
+                <div class="section-title">组件从出生到销毁</div>
+                <p class="hint">点阶段或按「依次播放」。注意 mounted 之前，DOM 是拿不到的。</p>
+                <div class="stage-track" id="stageTrack"></div>
+                <div class="comp-wrap">
+                    <div class="comp-stage" id="compStage">
+                        <div class="comp-box" id="compBox">组件实例</div>
+                        <div class="comp-note" id="compNote">DOM：尚未创建</div>
+                    </div>
+                    <div class="stage-detail" id="stageDetail"></div>
+                </div>
+                <div class="controls">
+                    <button class="btn" onclick="playStages()">依次播放</button>
+                    <button class="btn gray" onclick="stopStages()">停止</button>
+                </div>
+            </div>
+
+            <!-- Tab 4 -->
+            <div id="cards" class="tab-content">
+                <div class="section-title">八个最常见的指令</div>
+                <p class="hint">点卡片翻转：正面是一句话，背面是例子和最容易踩的坑。</p>
+                <div class="cards-grid" id="cardsGrid"></div>
+            </div>
+        </div>
+
+        <footer>02 笔记 · Vue3入门 · 交互图表</footer>
+    </div>
+
+    <script>
+        // ==================== Tab 切换 ====================
+        let playTimer = null;
+
+        function switchTab(name, btn) {
+            stopStages();
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(name).classList.add('active');
+            if (btn) btn.classList.add('active');
+        }
+
+        // ==================== Tab 1：写法对照 ====================
+        const samples = [
+            {
+                id: 'counter', name: '计数器',
+                left: [
+                    'data() {',
+                    '  return { count: 0 }',
+                    '},',
+                    'methods: {',
+                    '  add() { this.count++ }',
+                    '}',
+                    'computed: {',
+                    '  double() { return this.count * 2 }',
+                    '}'
+                ],
+                right: [
+                    'const count = ref(0)',
+                    '',
+                    'const add = () => count.value++',
+                    '',
+                    '',
+                    '',
+                    'const double = computed(() => count.value * 2)',
+                    '',
+                    ''
+                ],
+                notes: [
+                    '选项式：同一个 count，要分别登记在 data、methods、computed 三个地方。',
+                    '选项式：this.count 是隐式的，指向组件实例。',
+                    '选项式：修改必须在 methods 里，否则难以追踪。',
+                    '组合式：count 一个变量，后面所有逻辑都围着它写。',
+                    '组合式：脚本里必须写 .value，忘了就不更新。',
+                    '组合式：模板中可以省略 .value，Vue 自动解包。',
+                    '组合式：double 紧跟 count，改需求时不用跳文件。',
+                    '组合式：顺序即执行顺序，声明必须在使用之前。',
+                    '组合式：整段可以抽成 useCounter() 复用。'
+                ]
+            },
+            {
+                id: 'form', name: '表单双向绑定',
+                left: [
+                    'data() {',
+                    '  return { keyword: "", list: [] }',
+                    '},',
+                    'watch: {',
+                    '  keyword(v) { this.search(v) }',
+                    '},',
+                    'methods: {',
+                    '  search(v) { /* 请求 */ }',
+                    '}'
+                ],
+                right: [
+                    'const keyword = ref("")',
+                    'const list = ref([])',
+                    '',
+                    'watch(keyword, (v) => search(v))',
+                    '',
+                    '',
+                    '',
+                    'const search = async (v) => { /* 请求 */ }',
+                    ''
+                ],
+                notes: [
+                    '选项式：数据、监听、方法被拆到三个选项块。',
+                    '选项式：watch 的键是字符串，改名容易漏改。',
+                    '选项式：this 的指向依赖调用方式，解构后会丢。',
+                    '组合式：watch 的第一个参数是变量本身，改名即报错。',
+                    '组合式：可以显式拿到新旧值 (next, prev)。',
+                    '组合式：异步函数直接声明，不需要 this。',
+                    '组合式：需要防抖就包一层，逻辑位置很清楚。',
+                    '组合式：这段整体可抽成 useSearch()。',
+                    '组合式：依赖关系一眼可见，不用去 watch 选项里翻。'
+                ]
+            },
+            {
+                id: 'list', name: '列表渲染',
+                left: [
+                    'data() {',
+                    '  return { list: [] }',
+                    '},',
+                    'computed: {',
+                    '  total() {',
+                    '    return this.list.length',
+                    '  }',
+                    '}'
+                ],
+                right: [
+                    'const list = ref([])',
+                    '',
+                    'const total = computed(() => list.value.length)',
+                    '',
+                    '',
+                    '',
+                    '',
+                    ''
+                ],
+                notes: [
+                    '选项式：list 挂在 data 上，任何组件都能 this.list 访问到。',
+                    '选项式：新增字段要改 data 的返回对象。',
+                    '组合式：list 是模块作用域，只暴露给模板和同文件函数。',
+                    '组合式：computed 依赖自动收集，不需要写依赖数组。',
+                    '组合式：list 整体替换时用 list.value = newList。',
+                    '组合式：如果给 key 用 index，删除中间项会错位。',
+                    '组合式：要过滤就用 computed，不要在模板里写方法。',
+                    '组合式：这段可以原样搬到另一个组件里复用。'
+                ]
+            }
+        ];
+
+        let currentSample = 0;
+        let currentRow = -1;
+
+        function renderSample(index) {
+            currentSample = index;
+            currentRow = -1;
+            const s = samples[index];
+
+            document.getElementById('sampleSwitch').innerHTML = samples.map((it, i) =>
+                `<button class="chip${i === index ? ' active' : ''}" onclick="renderSample(${i})">${it.name}</button>`
+            ).join('');
+
+            const max = Math.max(s.left.length, s.right.length);
+            let leftHtml = '', rightHtml = '';
+            for (let i = 0; i < max; i++) {
+                const l = s.left[i] || '';
+                const r = s.right[i] || '';
+                leftHtml += `<div class="code-row" data-row="${i}" onclick="selectRow(${i})">${highlight(l) || '&nbsp;'}</div>`;
+                rightHtml += `<div class="code-row" data-row="${i}" onclick="selectRow(${i})">${highlight(r) || '&nbsp;'}</div>`;
+            }
+            document.getElementById('codeLeft').innerHTML = leftHtml;
+            document.getElementById('codeRight').innerHTML = rightHtml;
+            document.getElementById('codeNote').textContent = '点任意一行，看这一行在两种写法里的位置差异。';
+        }
+
+        function highlight(line) {
+            if (!line) return '';
+            return line
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/\b(ref|reactive|computed|watch|data|methods|return)\b/g, '<span class="kw">$1</span>')
+                .replace(/\b(\w+)\s*\(/g, '<span class="fn">$1</span>(')
+                .replace(/(\/\/.*|\/\*.*\*\/)/g, '<span class="cm">$1</span>');
+        }
+
+        function selectRow(i) {
+            currentRow = i;
+            document.querySelectorAll('.code-row').forEach(el => {
+                el.classList.toggle('sel', Number(el.dataset.row) === i);
+            });
+            const s = samples[currentSample];
+            document.getElementById('codeNote').textContent = s.notes[i] || '这一行没有额外说明。';
+        }
+
+        // ==================== Tab 2：响应式模拟 ====================
+        const sim = { count: 0, price: 99 };
+        const simLogEl = () => document.getElementById('simLog');
+
+        function logLine(text, cls) {
+            const box = simLogEl();
+            const div = document.createElement('div');
+            if (cls) div.className = cls;
+            div.textContent = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function flash(id) {
+            const el = document.getElementById(id);
+            el.classList.remove('flash');
+            void el.offsetWidth;
+            el.classList.add('flash');
+        }
+
+        function simRender(reason) {
+            const total = sim.count * sim.price;
+            document.getElementById('boxCount').textContent = sim.count;
+            document.getElementById('boxPrice').textContent = sim.price;
+            document.getElementById('boxTotal').textContent = total;
+            document.getElementById('txtCount').textContent = sim.count;
+            document.getElementById('txtPrice').textContent = sim.price;
+            document.getElementById('txtTotal').textContent = total;
+            document.getElementById('priceLabel').textContent = sim.price;
+            if (reason) {
+                flash('viewCount');
+                flash('viewTotal');
+                logLine('patch DOM：只改了 3 个文本节点，没有重建整个组件。', 'ok');
+            }
+        }
+
+        function simInc(n) {
+            logLine(`count.value：${sim.count} → ${sim.count + n}`, 'info');
+            sim.count += n;
+            logLine('trigger：读过 count 的依赖被标记（2 处视图 + total）', 'warn');
+            logLine('computed total 重新求值，缓存失效一次', 'warn');
+            simRender(true);
+        }
+
+        function simPrice(v) {
+            sim.price = Number(v);
+            logLine(`price.value：→ ${sim.price}`, 'info');
+            logLine('trigger：读过 price 的依赖被标记（1 处视图 + total）', 'warn');
+            simRender(true);
+        }
+
+        function simReset() {
+            sim.count = 0;
+            sim.price = 99;
+            document.getElementById('priceRange').value = 99;
+            document.getElementById('simWarning').classList.remove('show');
+            logLine('重置为初始值：count = 0，price = 99', 'ok');
+            simRender(true);
+        }
+
+        function simMutateProps() {
+            document.getElementById('simWarning').classList.add('show');
+            logLine('Vue warn: Set operation on key "price" failed: target is readonly.', 'warn');
+            logLine('父组件的 price 没有变化，视图因此也不会变。', 'warn');
+            logLine('正确做法：emit("update:price", 新值)，由父组件修改。', 'ok');
+        }
+
+        // ==================== Tab 3：生命周期 ====================
+        const stages = [
+            { key: 'setup', name: 'setup()', dom: '尚未创建', can: '声明状态、注册钩子', cant: '访问 DOM、使用 this', detail: '组件实例刚创建，模板还没编译。这里声明的变量就是后面所有逻辑的地基。' },
+            { key: 'onBeforeMount', name: 'onBeforeMount', dom: '即将挂载', can: '最后一次修改初始数据', cant: '读取真实 DOM', detail: '渲染函数准备执行，虚拟 DOM 已生成，但页面节点还没插入文档。' },
+            { key: 'onMounted', name: 'onMounted', dom: '已挂载', can: '读尺寸、初始化图表、绑定事件', cant: '保证子组件全部就绪（异步组件除外）', detail: '第一个能安全拿到 DOM 的时机。第三方库初始化、滚动容器计算都在这里做。' },
+            { key: 'onBeforeUpdate', name: 'onBeforeUpdate', dom: '即将更新', can: '读取更新前的 DOM 状态', cant: '阻止本次更新', detail: '数据变了，diff 即将执行。适合记录「更新前」的位置或尺寸。' },
+            { key: 'onUpdated', name: 'onUpdated', dom: '已更新', can: '基于新 DOM 做测量', cant: '在里面改响应式数据（会再次触发更新）', detail: '任何数据变化都会触发它，容易写成死循环。只想盯某个值时改用 watch。' },
+            { key: 'onBeforeUnmount', name: 'onBeforeUnmount', dom: '即将销毁', can: '保存状态、通知外部', cant: '阻止销毁', detail: '组件仍然完整，适合做最后的持久化。' },
+            { key: 'onUnmounted', name: 'onUnmounted', dom: '已销毁', can: '清理定时器、解绑事件、销毁实例', cant: '再访问 DOM 或组件状态', detail: '最容易被忽略的一步。不清理的定时器会在页面切走后继续请求，造成内存与配额浪费。' }
+        ];
+
+        let activeStage = 0;
+
+        function renderStages() {
+            document.getElementById('stageTrack').innerHTML = stages.map((s, i) =>
+                `<div class="stage${i === activeStage ? ' active' : ''}${i < activeStage ? ' done' : ''}"
+                      onclick="selectStage(${i})">${s.name}</div>`
+            ).join('');
+        }
+
+        function selectStage(i) {
+            activeStage = i;
+            const s = stages[i];
+            renderStages();
+            const box = document.getElementById('compStage');
+            const compBox = document.getElementById('compBox');
+            const note = document.getElementById('compNote');
+
+            box.className = 'comp-stage';
+            compBox.className = 'comp-box';
+            if (i >= 4 && i <= 5) compBox.classList.add('update');
+            if (i >= 2 && i <= 4) box.classList.add('mounted');
+            if (i === 6) box.classList.add('unmounted');
+
+            compBox.textContent = i === 6 ? '组件已销毁' : '组件实例';
+            note.textContent = 'DOM：' + s.dom;
+
+            document.getElementById('stageDetail').innerHTML = `
+                <h4>${s.name}</h4>
+                <p>${s.detail}</p>
+                <p><span class="tag can">可以做</span>${s.can}</p>
+                <p><span class="tag cant">不要做</span>${s.cant}</p>
+                <p style="color:#64748b;font-size:.8rem">当前 DOM 状态：${s.dom}</p>
+            `;
+        }
+
+        function playStages() {
+            stopStages();
+            let i = 0;
+            selectStage(0);
+            playTimer = setInterval(() => {
+                i++;
+                if (i >= stages.length) { stopStages(); return; }
+                selectStage(i);
+            }, 900);
+            logLine('开始依次播放生命周期；离开本页签会自动停止（这就是 onUnmounted 的意义）。', 'ok');
+        }
+
+        function stopStages() {
+            if (playTimer) { clearInterval(playTimer); playTimer = null; }
+        }
+
+        // ==================== Tab 4：指令速查卡 ====================
+        const directives = [
+            { name: 'v-if', one: '条件不成立时，元素从 DOM 中销毁。', code: '<div v-if="ok">内容</div>', pit: '频繁切换时开销大；与 v-for 同用会拿不到循环变量。' },
+            { name: 'v-show', one: '只切换 display，元素始终在 DOM 里。', code: '<div v-show="ok">内容</div>', pit: '首屏一定要渲染，内容很重时反而更慢。' },
+            { name: 'v-for', one: '按数组或对象循环渲染。', code: '<li v-for="it in list" :key="it.id">', pit: 'key 用 index，删除中间项会导致 DOM 状态错位。' },
+            { name: 'v-model', one: '属性 + 事件的语法糖，双向绑定。', code: '<input v-model="kw" />', pit: '组件上展开为 modelValue 与 update:modelValue，名字不能随便写。' },
+            { name: 'v-bind', one: '把 JS 表达式绑定到属性上。', code: '<img :src="url" />', pit: '绑定布尔属性时，值为 false 会移除属性，不是设为字符串 false。' },
+            { name: 'v-on', one: '绑定事件监听。', code: '<button @click="add">加</button>', pit: '传参时别写成 add()，那会在渲染时就执行；用 @click="() => add(1)"。' },
+            { name: 'v-html', one: '把字符串当 HTML 插入。', code: '<div v-html="raw"></div>', pit: '用户输入直接渲染会有 XSS 风险，必须先用可信的白名单清洗。' },
+            { name: 'v-slot', one: '声明插槽内容，常写作 #name。', code: '<template #default="{ item }">', pit: '作用域插槽的数据只在模板里可用，不能直接在 script 中访问。' }
+        ];
+
+        function renderCards() {
+            document.getElementById('cardsGrid').innerHTML = directives.map((d, i) => `
+                <div class="card" id="card-${i}" onclick="toggleCard(${i})">
+                    <div class="card-inner">
+                        <div class="card-face card-front">
+                            <div class="card-name">${d.name}</div>
+                            <div class="card-oneline">${d.one}</div>
+                            <div class="card-oneline" style="margin-top:8px;color:#94a3b8;font-size:.75rem">点击查看例子与坑</div>
+                        </div>
+                        <div class="card-face card-back">
+                            <div class="k">例子</div>
+                            <code>${d.code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>
+                            <div class="k">易错点</div>
+                            <div class="pit">${d.pit}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleCard(i) {
+            document.getElementById('card-' + i).classList.toggle('flipped');
+        }
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', function () {
+            renderSample(0);
+            selectRow(0);
+            simRender(false);
+            logLine('初始渲染：视图读了 count、price、total，Vue 登记了 3 组依赖。', 'info');
+            selectStage(2);
+            renderCards();
+        });
+    </script>
+</body>
+</html>
